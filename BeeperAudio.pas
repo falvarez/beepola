@@ -24,6 +24,8 @@ procedure AudioReset;
 function AudioActive: Boolean;
 // Number of times the device ran dry while playing (diagnostics)
 function AudioUnderruns: Integer;
+// Number of non-silent samples written since AudioInit (diagnostics)
+function AudioLoudSamples: Cardinal;
 
 implementation
 
@@ -91,6 +93,7 @@ var
   ReadPos: Cardinal = 0;
   ResetRequested: LongInt = 0;
   Underruns: LongInt = 0;
+  LoudSamples: Cardinal = 0;
   Playing: Boolean = False;
 
 // Runs on an AudioQueue thread that FPC did not create: no RTL heap,
@@ -166,6 +169,7 @@ begin
   ReadPos := 0;
   ResetRequested := 0;
   Underruns := 0;
+  LoudSamples := 0;
   Playing := False;
 
   // nil run loop: callbacks come on the queue's own thread
@@ -229,6 +233,7 @@ begin
   for i := 0 to Count - 1 do
   begin
     Ring[WPos and (RING_SIZE - 1)] := (SmallInt(Src^) - 128) * 256;
+    if Src^ <> 128 then Inc(LoudSamples);
     Inc(Src);
     Inc(WPos);
   end;
@@ -259,6 +264,11 @@ end;
 function AudioUnderruns: Integer;
 begin
   Result := Underruns;
+end;
+
+function AudioLoudSamples: Cardinal;
+begin
+  Result := LoudSamples;
 end;
 
 end.

@@ -17,6 +17,9 @@ type
     iPerfFreq: int64;
     iSVGStartPos: integer;
     FVolume: integer;
+{$IFDEF FPC}
+    FEmuErrMsg: string;
+{$ENDIF}
     FNewPatternFunc: TNewPatternFunc;
     FPatternTickFunc: TPatternTickFunc;
     FEngine: TEngine;
@@ -123,6 +126,9 @@ type
     procedure SVG_AddDrumPatternData(Patt: STPatterns.TPattern;
       var iMemPtr: integer);
     procedure DisplayEmuError(sErr: string; iIntr: byte; regPC: word);
+{$IFDEF FPC}
+    procedure ShowEmuError;
+{$ENDIF}
     function LoadSVGSong(Song: TSTSong; iStartPos: integer): integer;
     function LoadRMBPattern(Patt: STPatterns.TPattern; Song: TSTSong): integer;
     function LoadRMBSong(Song: TSTSong; iStartPos: integer): integer;
@@ -4457,8 +4463,25 @@ begin
 end;
 
 
+{$IFDEF FPC}
+procedure TSpecEmu.ShowEmuError;
+begin
+  Application.MessageBox(PAnsiChar(FEmuErrMsg),PAnsiChar(Application.Title),MB_ICONERROR or MB_OK);
+end;
+{$ENDIF}
+
 procedure TSpecEmu.DisplayEmuError(sErr: string; iIntr: byte; regPC: word);
 begin
+{$IFDEF FPC}
+  FEmuErrMsg := 'An emulation error has occurred.'#13#10#13#10 +
+                sErr + IntToHex(iIntr,2) + #13#10#13#10 +
+                'Location: ' + IntToHex(regPC,4) + #13#10 +
+                'Engine: ' + IntToStr(Ord(FEngine)) + #13#10 +
+                'SP: ' + IntToHex(regSP,4);
+  // Cocoa only allows windows on the main thread, and the emulator may be
+  // running in TPlayerThread
+  TThread.Synchronize(nil, ShowEmuError);
+{$ELSE}
   Application.MessageBox(PAnsiChar(
                          'An emulation error has occurred.'#13#10#13#10 +
                          sErr + IntToHex(iIntr,2) + #13#10#13#10 +
@@ -4466,6 +4489,7 @@ begin
                          'Engine: ' + IntToStr(Ord(FEngine)) + #13#10 +
                          'SP: ' + IntToHex(regSP,4)),
                          PAnsiChar(Application.Title),MB_ICONERROR or MB_OK);
+{$ENDIF}
   // Try to reboot the emulation
   Self.regPC := $8000;
   Self.regSP := $7FF0;

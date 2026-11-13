@@ -341,6 +341,7 @@ var
   i,j: Integer;
 begin
   Result := true;
+  F := nil;
   try
     F := TFileStream.Create(sFileName, fmCreate or fmShareDenyWrite);
     F.Write('BBSONG'#0'0001'#0,12);
@@ -785,6 +786,7 @@ var
 begin
   Result := false;
   Clear();
+  F := nil;
   try
     F := TFileStream.Create(sFileName, fmOpenRead or fmShareDenyNone);
     sData := StreamGetNullString(F,bEOF);

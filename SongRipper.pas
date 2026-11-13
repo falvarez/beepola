@@ -527,6 +527,7 @@ var
   i: Integer;
 begin
   Result := -1; // Error
+  F := nil;
   try
     F := TFileStream.Create(sFileName,fmOpenRead or fmShareDenyNone);
     while F.Position < F.Size do
@@ -760,6 +761,7 @@ var
   regPC: word;
   bCompressed: boolean;
 begin
+  F := nil;
   try
     F := TFileStream.Create(sFileName,fmOpenRead or fmShareDenyNone);
     while F.Position < F.Size do
