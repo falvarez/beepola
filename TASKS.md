@@ -85,6 +85,7 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 - [ ] Atajos alternativos: Insert también con Ctrl+I, octava con Ctrl+1…5; en los menús, Ctrl → Cmd bajo `{$IFDEF DARWIN}`.
   Verificación: en un MacBook sin teclado numérico se insertan filas, se cambia de octava y Cmd+S/Cmd+O funcionan.
+  Pendiente relacionado: `GetKeyboardLayout` devuelve ahora siempre QWERTY en macOS; para AZERTY/QWERTZ habría que leer la distribución activa (`TISCopyCurrentKeyboardLayoutInputSource`).
 - [ ] Ajustes visuales: fuentes, alturas de las rejillas, owner-draw de `grdPattern`/`grdSong`, `pbxLoopStart`.
   Verificación: comparación visual con la versión de Windows; ningún texto cortado ni solapado.
 
