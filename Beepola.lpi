@@ -9,7 +9,6 @@
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <Title Value="Beepola"/>
-      <UseAppBundle Value="True"/>
     </General>
     <BuildModes>
       <Item Name="Default" Default="True"/>

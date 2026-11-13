@@ -115,6 +115,7 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 - [ ] `build_macos.sh`: compila, monta `Beepola.app` (`Info.plist`, `Beepola.icns` generado con `sips`/`iconutil`, `help/` en `Resources`) y firma en ad-hoc (`codesign -s -`).
   Verificación: `./build_macos.sh && codesign -v Beepola.app && open Beepola.app`; el menú Ayuda abre la ayuda local.
+  Hecho salvo el clic en Ayuda: el script compila con `lazbuild` (ruta en `LAZBUILD`), monta `Beepola.app` desde cero con el ejecutable copiado (no enlazado), `Info.plist` (`local.beepola.Beepola`, 1.06.02, macOS 11+), `PkgInfo`, `Beepola.icns` (con `sips`/`iconutil`; el `.ico` llega a 48×48, así que los tamaños grandes salen escalados) y `help/` copiada de `Beepola_v1.08.01/help` (si falta, avisa y el menú abre la ayuda en línea), y firma ad-hoc. `codesign -v`: válida; `open Beepola.app` arranca. Ojo: no hay que poner `NSPrincipalClass` en el plist, porque la LCL usa su propia subclase de `NSApplication` y la app aborta al arrancar. Se quitó `UseAppBundle` del `.lpi` para que `lazbuild` no cree su propio bundle con un enlace simbólico. La ruta de la ayuda (`<exe>/../Resources/help/index.html`) se comprobó con un bundle de prueba lanzado con `open`. PENDIENTE: pulsar Ayuda → Online Help Contents en la app (automatizarlo requiere permiso de Accesibilidad).
 
 ## Más adelante
 
