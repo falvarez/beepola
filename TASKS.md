@@ -4,17 +4,20 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 1. Toolchain
 
-- [ ] Instalar FPC con Homebrew (`brew install fpc`).
+- [x] Instalar FPC con Homebrew (`brew install fpc`).
   Verificación: `fpc -i` muestra la versión y `fpc -iTP` incluye `aarch64`.
-- [ ] Descargar el código fuente estable de Lazarus en `~/opt/lazarus` y compilar `lazbuild` (`make lazbuild`).
+- [x] Descargar el código fuente estable de Lazarus en `~/opt/lazarus` y compilar `lazbuild` (`make lazbuild`).
   Verificación: `~/opt/lazarus/lazbuild --version` imprime la versión.
+  Hecho: tag `lazarus_4_8`, `make lazbuild LCL_PLATFORM=cocoa`; enlaza sin `-k-ld_classic`.
 - [ ] Compilar un "hola mundo" LCL/Cocoa de prueba (un form con un botón) en el scratchpad con `lazbuild --ws=cocoa`.
   Verificación: el binario arranca y muestra la ventana. Si el enlazado falla, probar `-k-ld_classic` y anotar el flag necesario en `docs/PLAN.md`.
+  BLOQUEADA: con FPC 3.2.2 (brew) el enlazado falla con el `ld` actual (ld-27106): `malformed method list atom 'ltmp5' (cocoawsextctrls.o), fixups found beyond the number of method entries`; `-k-ld_classic` ya no funciona (`-ld_classic is no longer supported and will be ignored`). Solución prevista en el plan: compilar FPC 3.2.4 (tag `release_3_2_4`) desde fuente en `~/opt/fpc` con el de brew como bootstrap, recompilar `lazbuild`/LCL con él y reintentar. Pendiente de autorizar la descarga y compilación.
 
 ## 2. Esqueleto del proyecto
 
-- [ ] Crear `Beepola.lpr` (a partir de `Beepola.dpr`: `Interfaces` antes de `Forms`, sin `MainFormOnTaskbar`, `{$R BeepolaData.res}`) y `Beepola.lpi` (modo Delphi, widgetset cocoa, aarch64-darwin, `-k-ld_classic` si hizo falta).
+- [x] Crear `Beepola.lpr` (a partir de `Beepola.dpr`: `Interfaces` antes de `Forms`, sin `MainFormOnTaskbar`, `{$R BeepolaData.res}`) y `Beepola.lpi` (modo Delphi, widgetset cocoa, aarch64-darwin, `-k-ld_classic` si hizo falta).
   Verificación: `lazbuild Beepola.lpi` empieza a compilar unidades (los errores en unidades concretas son aceptables en este punto).
+  Hecho: sin `{$R BeepolaData.res}` en el `.lpr` porque ya lo incluye `frmSTMainWnd.pas`; `BeepolaSDK` fuera; sin `-k-ld_classic` (no sirve). Falla en `frmSTMainWnd.pas` por la unidad `Windows`, como se esperaba.
 - [ ] Añadir a `.gitignore` las salidas de compilación (`lib/`, `*.o`, `*.ppu`, `Beepola.app/`, binario `Beepola`).
   Verificación: tras un build, `git status` no muestra artefactos.
 
