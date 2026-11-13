@@ -98,8 +98,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 9. Funcionalidad de ficheros
 
-- [ ] Guardar y abrir un `.bbsong`.
+- [x] Guardar y abrir un `.bbsong`.
   Verificación: guardar, cerrar, reabrir → contenido idéntico; `cmp` entre dos guardados consecutivos sin cambios.
+  Hecho: `sokoban.bbsong` (compuesta y guardada por el usuario en la app de macOS, que la reabrió desde la MRU) cargada y guardada de nuevo es idéntica byte a byte, y un segundo ciclo carga/guardado también (`cmp`). Un fichero inexistente da `EFOpenError` (aviso), no un cuelgue.
 - [ ] Exportar a WAV.
   Verificación: `afplay` reproduce el fichero; `afinfo` muestra 44100 Hz, mono, 8-bit y la duración esperada.
 - [ ] Compilar a `.tap`/`.asm` desde el diálogo Compile con cada motor.
