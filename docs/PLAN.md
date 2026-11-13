@@ -56,3 +56,13 @@ Nota: el código fuente es v1.06.02+trunk; el `.exe` incluido es v1.08.01. Se co
 3. Exportar WAV y comprobar duración/sonido con `afplay`.
 4. Compilar a `.tap`/`.asm` desde el diálogo Compile y comparar el binario con el generado por `Beepola.exe` original (si se dispone de Wine/Windows) o al menos cargarlo en un emulador (Fuse) y verificar que suena.
 5. Guardar opciones y MRU, reiniciar app → persisten en el `.ini`.
+
+## Emulador Z80: limitaciones conocidas (RMB y PLP)
+El emulador de `SpecEmu.pas` solo implementa las instrucciones Z80 que usan los motores SFX, TMB, MSD, P1D, P1S y SVG. Esto ya era así en el código original (1.06.02): no es un efecto del port.
+- **RMB**: su reproductor usa instrucciones que faltan, así que al reproducir aparece «An emulation error has occurred». La primera que falla es `BIT 0,(IX+d)`; luego vendrían `RES b,(IX+d)`, `RES 2,(HL)`, `AND B`, etc. Compilar a `.tap`/`.asm` con RMB sí funciona, porque no pasa por el emulador.
+- **PLP**: no hay imagen del reproductor (`plp_img` no está en `BeepolaData.rc`) ni cargador de patrones en el emulador; al reproducir suena silencio. También compila bien.
+
+Trabajo ya hecho, sin integrar: [`docs/patches/z80-bit-res-set.diff`](patches/z80-bit-res-set.diff) completa en `SpecEmu.pas` los grupos `BIT/RES/SET b,r` del prefijo `CB` (funciones `GetReg8`/`SetReg8`) y `BIT/RES/SET b,(IX/IY+d)` del prefijo `DD/FD CB`. Se aplica con `git apply docs/patches/z80-bit-res-set.diff` y compila. Con él, RMB avanza hasta la siguiente instrucción que falta (`AND B`, opcode `$A0`, sin prefijo). Quedan sin implementar unas 45 instrucciones sin prefijo, buena parte de `CB`/`ED` y de las indexadas.
+
+Cómo probarlo: `keytest -play 6` (programa de prueba del scratchpad) o, en la app, elegir ROM Beep y reproducir; la comprobación de referencia sería la salida WAV del `.exe` 1.08.01.
+
