@@ -127,3 +127,8 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
   Hecho: decodificación genérica para todas las tablas (casos originales intactos), 67/67 en `zexdoc` (`tests/run_zexdoc.sh`), 7 errores del original corregidos (ver `docs/PLAN.md`), audio de los demás motores y del About idéntico byte a byte. RMB suena en patrón y canción (reescrito `LoadRMBSong`), también en la app (`keytest -play 6`: avanza las filas, Stop limpio, 0 excepciones), y se activa en Exportar WAV y en Compile.
 - [ ] Motor Plip Plop (PLP): el de este código es un prototipo que no ensambla; el de la 1.08.01 es otro motor (diente de sierra con *pitch bend*, percusión, formato con comandos) con imagen en el recurso `PLP_IMG` del `.exe`. Portarlo exige reconstruir formato de datos, cargador, columna PBend y compilador a partir del binario (ver `docs/PLAN.md`).
   Verificación: reproducir y compilar una canción PLP; comparar con la salida del `.exe` 1.08.01.
+- [ ] Motor Stocker (`STK`): solo existe la entrada de menú; no hay reproductor, cargador, compilador ni imagen en este código ni en la 1.08.01.
+  Verificación: reproducir y compilar una canción con Stocker.
+- [ ] Motores de la 1.08.01 que no están en este código: Huby (HBY), QChan (QCN), Tritone (TRI) y TEV. Sus imágenes de reproductor están en los recursos `*_IMG` del `.exe` 1.08.01 y su ayuda en `help/engine-*.html`; habría que reconstruir formato, cargador, interfaz y compilador.
+  Verificación: reproducir y compilar una canción con cada uno; comparar con la salida del `.exe` 1.08.01.
+
