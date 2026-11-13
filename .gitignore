@@ -1,1 +1,11 @@
 Beepola_v1.08.01/
+# Salidas de compilación de Lazarus/FPC
+lib/
+*.o
+*.ppu
+*.or
+*.compiled
+/Beepola
+Beepola.app/
+Beepola.lps
+backup/

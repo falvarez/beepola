@@ -18,7 +18,7 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Crear `Beepola.lpr` (a partir de `Beepola.dpr`: `Interfaces` antes de `Forms`, sin `MainFormOnTaskbar`, `{$R BeepolaData.res}`) y `Beepola.lpi` (modo Delphi, widgetset cocoa, aarch64-darwin, `-k-ld_classic` si hizo falta).
   Verificación: `lazbuild Beepola.lpi` empieza a compilar unidades (los errores en unidades concretas son aceptables en este punto).
   Hecho: sin `{$R BeepolaData.res}` en el `.lpr` porque ya lo incluye `frmSTMainWnd.pas`; `BeepolaSDK` fuera; sin `-k-ld_classic` (no sirve). Falla en `frmSTMainWnd.pas` por la unidad `Windows`, como se esperaba.
-- [ ] Añadir a `.gitignore` las salidas de compilación (`lib/`, `*.o`, `*.ppu`, `Beepola.app/`, binario `Beepola`).
+- [x] Añadir a `.gitignore` las salidas de compilación (`lib/`, `*.o`, `*.ppu`, `Beepola.app/`, binario `Beepola`).
   Verificación: tras un build, `git status` no muestra artefactos.
 
 ## 3. Núcleo sin interfaz gráfica
