@@ -43,7 +43,8 @@ uses
   frmSongRipper in 'frmSongRipper.pas' {SongRipperDlg},
   RMB_Engine in 'RMB_Engine.pas',
   PLP_Engine in 'PLP_Engine.pas'{$IFDEF DARWIN},
-  MacLayout in 'MacLayout.pas'{$ENDIF};
+  MacLayout in 'MacLayout.pas',
+  MacKeyboard in 'MacKeyboard.pas'{$ENDIF};
 
 // BeepolaData.res se enlaza desde frmSTMainWnd.pas
 

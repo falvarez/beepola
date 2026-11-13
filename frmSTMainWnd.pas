@@ -274,7 +274,9 @@ type
     MRUList: TMRUList;
 {$IFDEF DARWIN}
     bSkipKeyPress: boolean;
+    cMacNoteChar: Char;
     procedure MacFormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure MacFormUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
     procedure MacMenuShortcuts;
 {$ENDIF}
     procedure InitDisplay;
@@ -346,7 +348,7 @@ uses frmCompileDlg, frmCopyPattern, frmTransposePatternDlg,
   frmAboutDlg, frmKeyLayoutWnd, {$IFNDEF FPC}ShellApi, {$ENDIF}frmSongInfoDlg, frmTransposeSongDlg,
   frmExportWavDlg, Math, frmSwapChannelsDlg, frmPatternAppendDlg, IniFiles,
   frmImportVTIIFileDlg, frmAdjustSongTempoDlg, frmOptionsDlg,
-  frmSongRipper{$IFDEF FPC}, BeeperAudio{$ENDIF};
+  frmSongRipper{$IFDEF FPC}, BeeperAudio{$ENDIF}{$IFDEF DARWIN}, MacKeyboard, LConvEncoding{$ENDIF};
 
 {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 {$R BeepolaData.RES}
@@ -579,6 +581,7 @@ begin
 
 {$IFDEF DARWIN}
   OnKeyUp := MacFormKeyUp;
+  OnUTF8KeyPress := MacFormUTF8KeyPress;
   MacMenuShortcuts();
 {$ENDIF}
 
@@ -759,6 +762,12 @@ begin
     Key := #0;
     exit;
   end;
+  // Non-ASCII note keys arrive here as '?': use the one MacFormUTF8KeyPress kept
+  if cMacNoteChar <> #0 then
+  begin
+    Key := cMacNoteChar;
+    cMacNoteChar := #0;
+  end;
 {$ENDIF}
   if udnOctave.Focused then
   begin
@@ -775,6 +784,23 @@ end;
 procedure TSTMainWnd.MacFormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   bSkipKeyPress := false;
+  cMacNoteChar := #0;
+end;
+
+// The AZERTY and QWERTZ note keys include accented letters (é, è, ç, à, ö,
+// §), which the Cocoa LCL passes to KeyPress as '?'. Keep their Windows-1252
+// code, as the note tables expect, for FormKeyPress to hand to the grid.
+procedure TSTMainWnd.MacFormUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
+var
+  s: string;
+begin
+  cMacNoteChar := #0;
+  if (Length(UTF8Key) > 1) and (ActiveControl = grdPattern) then
+  begin
+    s := UTF8ToCP1252(UTF8Key);
+    if Length(s) = 1 then
+      cMacNoteChar := s[1];
+  end;
 end;
 
 // Ctrl+X menu shortcuts become Cmd+X, as Mac users expect
@@ -3805,11 +3831,15 @@ begin
 end;
 
 {$IFDEF FPC}
-// There is no per-thread keyboard layout id on macOS: use the US QWERTY
-// note mapping (the default branch below)
+// There is no per-thread keyboard layout id outside Windows: on macOS read
+// the active layout, elsewhere use the US QWERTY note mapping
 function GetKeyboardLayout(dwLayout: Cardinal): Cardinal;
 begin
+{$IFDEF DARWIN}
+  Result := MacKeyboardLayout;
+{$ELSE}
   Result := $04090409;
+{$ENDIF}
 end;
 {$ENDIF}
 
@@ -3826,7 +3856,7 @@ begin
       case Key of
       'w','s','x','d','c','v','g','b','h','n','j',',','l',';','m',':':
         Result := true;
-      'a',#$E9,'z','"','e','r','(','t','-','y',#$E8,'u','i',#$E7,'o',#$E0,'p':
+      'a',#$E9,'z','"','e','r','(','t','-',{$IFDEF DARWIN}#$A7,{$ENDIF}'y',#$E8,'u','i',#$E7,'o',#$E0,'p':
         Result := true;
       'q','&':
         Result := true;
@@ -3913,7 +3943,7 @@ begin
       'r': iNote := 17;
       '(': iNote := 18;
       't': iNote := 19;
-      '-': iNote := 20;
+      '-'{$IFDEF DARWIN},#$A7{$ENDIF}: iNote := 20;  // Mac AZERTY has § on that key
       'y': iNote := 21;
       #$E8: iNote := 22;
       'u': iNote := 23;
