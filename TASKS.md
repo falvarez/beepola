@@ -107,8 +107,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [ ] Compilar a `.tap`/`.asm` desde el diálogo Compile con cada motor.
   Verificación: el `.tap` carga y suena en un emulador (p. ej. Fuse); si es posible, `cmp` con la salida de `Beepola.exe` original.
   Hecho salvo la escucha: `keytest -compile` ejecuta el `cmdOKClick` real del diálogo (con un `TSaveDialog` falso y cerrando el aviso final con OK) sobre `sokoban.bbsong` con los 7 motores, en `.tap` con cargador BASIC y en `.asm`: sin errores. Cada `.tap` tiene bloques y checksums XOR correctos (cargador «Beepola» con `CLEAR 59999 / LOAD ""CODE / RANDOMIZE USR 60000`, más el bloque «Sokoban» en 60000), y el código del `.tap` es idéntico byte a byte al que da `pasmo` ensamblando el `.asm` generado, lo que valida el ensamblador portado. PENDIENTE: cargar un `.tap` en un emulador (Retro Virtual Machine) y oírlo; la comparación con el `.exe` 1.08.01 daría diferencias de versión (el REM del cargador, por ejemplo).
-- [ ] Persistencia de opciones y MRU.
+- [x] Persistencia de opciones y MRU.
   Verificación: cambiar las opciones, abrir 2 canciones, reiniciar la app → las opciones y la lista MRU se conservan.
+  Hecho: dos ejecuciones de `keytest` con `XDG_CONFIG_HOME` en el scratchpad. En la primera se activan las dos opciones con el `cmdOKClick` real de Options y se abren dos canciones con `mnuFileOpenClick` (diálogo de apertura falso). En la segunda, `RegSettings` y el diálogo muestran las opciones activas, la rejilla numera en hexadecimal («0A») y el menú File lista `dos` y `uno` en ese orden. El `beepola.ini` del usuario también conserva la MRU entre sesiones.
 
 ## 10. Empaquetado
 
