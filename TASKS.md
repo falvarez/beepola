@@ -91,6 +91,7 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [ ] Atajos alternativos: Insert también con Ctrl+I, octava con Ctrl+1…5; en los menús, Ctrl → Cmd bajo `{$IFDEF DARWIN}`.
   Verificación: en un MacBook sin teclado numérico se insertan filas, se cambia de octava y Cmd+S/Cmd+O funcionan.
   Pendiente relacionado: `GetKeyboardLayout` devuelve ahora siempre QWERTY en macOS; para AZERTY/QWERTZ habría que leer la distribución activa (`TISCopyCurrentKeyboardLayoutInputSource`).
+  Hecho el código (bajo `{$IFDEF DARWIN}`): Ctrl+I → `VK_INSERT`; Ctrl+1…5 fijan la octava (sin enfocar `udnOctave`), y el `KeyPress` que pueda seguir se descarta hasta el `KeyUp` para que no entre como nota; Retroceso actúa como Supr en las rejillas (la tecla «delete» del Mac); en los menús Ctrl → Cmd, más Cmd+N/Cmd+O, que el original no tenía (Cmd+Shift+S ya es «Shrink ×2»). Comprobado llamando a los manejadores (`keytest -check`): atajos Meta+…, octava, inserción de fila y teclado numérico original sin excepciones. PENDIENTE: probar con el teclado real de un MacBook (o dar permiso de Accesibilidad para automatizarlo).
 - [ ] Ajustes visuales: fuentes, alturas de las rejillas, owner-draw de `grdPattern`/`grdSong`, `pbxLoopStart`.
   Verificación: comparación visual con la versión de Windows; ningún texto cortado ni solapado.
 

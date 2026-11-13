@@ -272,6 +272,11 @@ type
     iOldPatternRow, iOldPatternCol: integer;
     FPlaying: TPlaying;
     MRUList: TMRUList;
+{$IFDEF DARWIN}
+    bSkipKeyPress: boolean;
+    procedure MacFormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure MacMenuShortcuts;
+{$ENDIF}
     procedure InitDisplay;
     procedure InitPatternGrid;
     procedure NumberGridRows;
@@ -572,6 +577,11 @@ begin
 
   UpdateMRUMenu();
 
+{$IFDEF DARWIN}
+  OnKeyUp := MacFormKeyUp;
+  MacMenuShortcuts();
+{$ENDIF}
+
 {$IFNDEF FPC}
   timeGetDevCaps(@TimeCaps,SizeOf(TimeCaps));
   iTimerPeriod := TimeCaps.wPeriodMin;
@@ -693,6 +703,24 @@ end;
 procedure TSTMainWnd.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
+{$IFDEF DARWIN}
+  // Mac laptops have neither Insert nor a numeric keypad
+  if (ssCtrl in Shift) and (Key = VK_I) then
+  begin
+    Key := VK_INSERT;
+    bSkipKeyPress := true;
+  end
+  else if (ssCtrl in Shift) and (Key >= VK_1) and (Key <= VK_5) then
+  begin
+    udnOctave.Position := Key - VK_0;
+    Key := 0;
+    bSkipKeyPress := true;
+    exit;
+  end
+  // The Mac "delete" key is Backspace; Fn+Delete is the real Delete
+  else if (Key = VK_BACK) and (ActiveControl is TStringGrid) then
+    Key := VK_DELETE;
+{$ENDIF}
   case KEY of
   VK_NUMPAD1:
     begin
@@ -724,6 +752,14 @@ end;
 
 procedure TSTMainWnd.FormKeyPress(Sender: TObject; var Key: Char);
 begin
+{$IFDEF DARWIN}
+  // Don't let a Ctrl shortcut handled in FormKeyDown also enter a note
+  if bSkipKeyPress then
+  begin
+    Key := #0;
+    exit;
+  end;
+{$ENDIF}
   if udnOctave.Focused then
   begin
     Key := #0;
@@ -734,6 +770,32 @@ begin
     StopPlayer();
   end;
 end;
+
+{$IFDEF DARWIN}
+procedure TSTMainWnd.MacFormKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  bSkipKeyPress := false;
+end;
+
+// Ctrl+X menu shortcuts become Cmd+X, as Mac users expect
+procedure TSTMainWnd.MacMenuShortcuts;
+var
+  i: integer;
+  Item: TMenuItem;
+begin
+  for i := 0 to ComponentCount - 1 do
+    if Components[i] is TMenuItem then
+    begin
+      Item := Components[i] as TMenuItem;
+      if (Item.ShortCut and scCtrl) <> 0 then
+        Item.ShortCut := (Item.ShortCut and not scCtrl) or scMeta;
+    end;
+
+  // Standard Mac shortcuts the Windows menus lacked
+  if mnuFileNew.ShortCut = 0 then mnuFileNew.ShortCut := scMeta or VK_N;
+  if mnuFileOpen.ShortCut = 0 then mnuFileOpen.ShortCut := scMeta or VK_O;
+end;
+{$ENDIF}
 
 procedure TSTMainWnd.FormPaint(Sender: TObject);
 var
