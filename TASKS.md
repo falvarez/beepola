@@ -101,8 +101,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Guardar y abrir un `.bbsong`.
   Verificación: guardar, cerrar, reabrir → contenido idéntico; `cmp` entre dos guardados consecutivos sin cambios.
   Hecho: `sokoban.bbsong` (compuesta y guardada por el usuario en la app de macOS, que la reabrió desde la MRU) cargada y guardada de nuevo es idéntica byte a byte, y un segundo ciclo carga/guardado también (`cmp`). Un fichero inexistente da `EFOpenError` (aviso), no un cuelgue.
-- [ ] Exportar a WAV.
+- [x] Exportar a WAV.
   Verificación: `afplay` reproduce el fichero; `afinfo` muestra 44100 Hz, mono, 8-bit y la duración esperada.
+  Hecho: con los mismos pasos que `TExportWavDlg.cmdOKClick` (programa de consola `exportwav`), `sokoban.bbsong` hasta el final de la canción da 706 frames = 14,12 s y en modo fijo 10 s exactos; `afinfo`: WAVE, 1 canal, 44100 Hz, PCM 8 bits sin signo; `afplay` lo reproduce entero. Corregido un error del original: el tamaño RIFF de la cabecera se escribía 4 bytes corto (`datos + 32` en vez de `+ 36`). El diálogo en sí (selector de fichero, botón Abort) no se ha probado de forma automática.
 - [ ] Compilar a `.tap`/`.asm` desde el diálogo Compile con cada motor.
   Verificación: el `.tap` carga y suena en un emulador (p. ej. Fuse); si es posible, `cmp` con la salida de `Beepola.exe` original.
 - [ ] Persistencia de opciones y MRU.

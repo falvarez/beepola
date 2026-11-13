@@ -2741,7 +2741,7 @@ begin
   if FWav = nil then exit;
 
   FWav.Seek(4,soFromBeginning);
-  i := iWavDataLen + 32;
+  i := iWavDataLen + 36; // RIFF size = file size - 8 (44-byte header)
   FWav.Write(i,4);
   FWav.Seek(40,soFromBeginning);
   i := iWavDataLen;
