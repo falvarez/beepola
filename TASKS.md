@@ -78,10 +78,10 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Tocar notas con el teclado en el editor de patrones.
   Verificación: suena cada nota y la octava cambia correctamente.
   Hecho: el usuario lo probó a mano en la app y suenan las notas. La prueba automática con pulsaciones de System Events necesita permiso de Accesibilidad para `osascript` (pendiente). Al arrancar, el foco queda en `txtOctave` (primer control en el orden de tabulación, probablemente igual que en la VCL). Las teclas de octava del teclado numérico se tratan en 8.1.
-- [ ] Reproducir patrón y canción con cada motor (SFX, TMB, MSD, P1D, P1S, SVG, RMB, PLP).
+- [x] Reproducir patrón y canción con cada motor (SFX, TMB, MSD, P1D, P1S, SVG, RMB, PLP).
   Verificación: el audio va a tempo, el resaltado de fila avanza y Stop corta limpio, sin bloqueos.
   Programa de prueba `keytest -play` (3 s de patrón y 3 s de canción por motor): SFX, TMB, MSD, P1D, P1S y SVG suenan, el resaltado avanza (16 filas en el patrón, 16–24 cambios de fila en la canción), sin underruns durante la reproducción, y Stop vuelve en unos 220 ms (el `Sleep(210)` original de `TPlayerThread`), con la fila restaurada. Corregido por el camino: el diálogo de error del emulador se abría desde el hilo de reproducción y Cocoa abortaba la app (ahora va por `TThread.Synchronize`), y `LoadFile`/`SaveFile` liberaban un stream sin inicializar si el fichero no se podía abrir.
-  RMB ya suena (emulador Z80 completado, ver «Más adelante»). BLOQUEADA solo por PLP, que en este código es un prototipo (tarea propia en «Más adelante»).
+  Repetida con el emulador completo (`keytest -play 01234567`): SFX, TMB, MSD, P1D, P1S, SVG y RMB suenan en patrón y canción, el resaltado avanza (16 filas en patrón, 16–24 cambios de fila en 3 s de canción), Stop vuelve en 213–236 ms a la fila 1, sin underruns durante la reproducción y 0 excepciones; los tests de Phaser1 y Savage suenan. PLP queda fuera: en este código no existe (tarea propia en «Más adelante»).
 - [x] Probar los botones de test de instrumento Phaser1 y de ornamento Savage.
   Verificación: suenan y devuelven el control a la UI.
   Hecho: el test de Phaser1 vuelve en 0,7 s y el de ornamento Savage en 0,5 s, los dos con sonido y sin excepciones (`keytest -play`); el usuario también los probó a mano.
