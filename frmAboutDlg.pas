@@ -3,9 +3,14 @@ unit frmAboutDlg;
 interface
 
 uses
+{$IFDEF FPC}
+  LCLIntf, LCLType, LMessages, SysUtils, Variants, Classes, Graphics, Controls,
+  Forms, Dialogs, ExtCtrls, StdCtrls, PlayerThread;
+{$ELSE}
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, ExtCtrls, jpeg, StdCtrls, JvExControls, JvaScrollText, ToolWin,
   JvExForms, JvScrollPanel, PlayerThread;
+{$ENDIF}
 
 type
   TAboutDlg = class(TForm)
@@ -38,7 +43,11 @@ type
     iMsg: integer;
     iPatCount: integer;
     procedure ScrollMsg;
+{$IFDEF FPC}
+    procedure AboutMusicNewPattern;
+{$ELSE}
     procedure WM_AboutMusic_NewPattern(var Msg: TMessage); message WM_USER_NEWPATTERN;
+{$ENDIF}
   public
     { Public declarations }
   end;
@@ -56,7 +65,7 @@ var
  sMsg: array [0..48] of string = ('','','','','','','',
                                   '','','By Chris Cowley','','v1.00.00','Beepola','',
                                   'by Shiru','Phaser1','','by Jonathan Smith','Special FX','Beeper Engine Credits:','',
-                                  '','by Saša Pušica','The Music Studio','','by Mark Alexander','The Music Box','',
+                                  '',{$IFDEF FPC}'by Sa'#$C5#$A1'a Pu'#$C5#$A1'ica'{$ELSE}'by Saša Pušica'{$ENDIF},'The Music Studio','','by Mark Alexander','The Music Box','',
                                   'by Chris Cowley','to all engines','Minor modifications','','by Jason C. Brooke','Savage','',
                                   'worldofspectrum.org','','forums at:','the World of Spectrum','further info, visit the','For assistance and','',
                                   '','','','','','','');
@@ -65,7 +74,7 @@ var
 procedure TAboutDlg.FormHide(Sender: TObject);
 begin
   Timer1.Enabled := false;
-  Spec.Terminate;
+  if Assigned(Spec) then Spec.Terminate;
   FreeAndNil(Spec);
 end;
 
@@ -83,9 +92,13 @@ begin
   Timer1.Interval := 4000;
   Timer1.Enabled := true;
   Spec := TPlayerThread.Create(true);
-  Spec.WaveOutHandle := STMainWnd.hWaveOut;
   Spec.Volume := 50;
+{$IFDEF FPC}
+  Spec.OnNewPattern := AboutMusicNewPattern;
+{$ELSE}
+  Spec.WaveOutHandle := STMainWnd.hWaveOut;
   Spec.HMsgWnd := Self.Handle;
+{$ENDIF}
   Spec.Engine := ABOUT;
   iPatCount := 0;
   Spec.Resume;
@@ -153,6 +166,15 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
+procedure TAboutDlg.AboutMusicNewPattern;
+begin
+  inc(iPatCount);
+  // A thread cannot suspend another one on Unix: stop the music instead
+  if (iPatCount > 5) and Assigned(Spec) then
+    Spec.Terminate;
+end;
+{$ELSE}
 procedure TAboutDlg.WM_AboutMusic_NewPattern(var Msg: TMessage);
 begin
   inc(iPatCount);
@@ -160,5 +182,6 @@ begin
     Spec.Suspend;
   end;
 end;
+{$ENDIF}
 
 end.
