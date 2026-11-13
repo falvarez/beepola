@@ -10,12 +10,28 @@ function StreamGetString(F: TStream; out bEOF: boolean): string;
 
 implementation
 
+{$IFDEF FPC}
+uses SysUtils;
+{$ELSE}
 uses Windows, SysUtils, Forms;
+{$ENDIF}
 
 ////////////////////////////////////////////////////////////////
 // this function determines the size of a file in bytes, the size
 // can be more than 2 GB.
 function Sto_GetFileSize(const FileName: String): Int64;
+{$IFDEF FPC}
+var
+  SR: TSearchRec;
+begin
+  Result := 0;
+  if FindFirst(FileName, faAnyFile, SR) = 0 then
+  begin
+    Result := SR.Size;
+    FindClose(SR);
+  end;
+end;
+{$ELSE}
 var
   myFile: THandle;
   myFindData: TWin32FindData;
@@ -31,7 +47,15 @@ begin
     Int64Rec(Result).Hi := myFindData.nFileSizeHigh;
   end;
 end;
+{$ENDIF}
 
+{$IFDEF FPC}
+procedure GetAppVersionInfo(var sInfo: string);
+begin
+  // No version resource on macOS: matches the 1.06.02 source tree
+  sInfo := '1.06.02';
+end;
+{$ELSE}
 procedure GetAppVersionInfo(var sInfo: string);
 var
   VerInfo: PChar;
@@ -56,6 +80,7 @@ begin
   else
     sInfo := '0.0.0.0000';
 end;
+{$ENDIF}
 
 function StreamGetString(F: TStream; out bEOF: boolean): string;
 var

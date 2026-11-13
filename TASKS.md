@@ -25,8 +25,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 - [ ] Hacer que compilen las unidades puras: `AsmTypes`, `AsmUtils`, `AsmPass1`, `AsmPass2`, `Assemb`, `STPatterns`, `STInstruments`, `STSong`, `*_Engine.pas`.
   Verificación: `fpc -Mdelphi -Fu. <unidad>.pas` compila cada unidad sin errores.
-- [ ] `GrokUtils.pas`: `Sto_GetFileSize` con `FileSize` de FPC; `GetAppVersionInfo` devuelve una constante.
+- [x] `GrokUtils.pas`: `Sto_GetFileSize` con `FileSize` de FPC; `GetAppVersionInfo` devuelve una constante.
   Verificación: `fpc -Mdelphi GrokUtils.pas` compila; un programa de prueba en el scratchpad imprime el tamaño correcto de `z80.tab` (14096).
+  Hecho: bajo `{$IFDEF FPC}`, `FindFirst`/`TSearchRec.Size` de `SysUtils` (Int64, sin depender de LazUtils) y versión `'1.06.02'`; el código Windows se conserva en `{$ELSE}`.
 - [ ] Comprobar que `TResourceStream` lee `BeepolaData.RES` en Darwin.
   Verificación: un programa de prueba con `{$R BeepolaData.res}` carga `z80_tab` (14096 bytes) y `sfx_img` (65536 bytes).
 
