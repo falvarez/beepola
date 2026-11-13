@@ -44,8 +44,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 5. Hilo de reproducción y settings
 
-- [ ] `PlayerThread.pas`: sustituir `PostMessage`/`HMsgWnd`/`WaveOutHandle` por eventos `OnNewPattern/OnPatternTick/OnSongEnd` disparados con `TThread.Queue`.
+- [x] `PlayerThread.pas`: sustituir `PostMessage`/`HMsgWnd`/`WaveOutHandle` por eventos `OnNewPattern/OnPatternTick/OnSongEnd` disparados con `TThread.Queue`.
   Verificación: la unidad compila; el test se hace en la tarea de reproducción de la sección 7.
+  Hecho: eventos `TThreadMethod` encolados con `Queue(nil, …)` (sin ligar al hilo, para que `OnSongEnd` llegue aunque ya se haya liberado); `WaveOutHandle`/`HMsgWnd` y los `WM_USER_*` solo quedan bajo `{$IFNDEF FPC}`. `inherited Create(CreateSuspended)` porque el `TThread.Create` de FPC tiene un parámetro más. Prueba de consola: 1 s de canción SFX → 1 OnNewPattern, 51 OnPatternTick y OnSongEnd entregado tras `WaitFor`/`Free`.
 - [ ] Reescribir `RegSettings.pas` y `MRUList.pas` sobre `TIniFile` en `GetAppConfigDir`, con la misma interfaz pública.
   Verificación: un programa de prueba guarda las opciones y 3 entradas MRU, las relee y las imprime; existe `~/.config/…/beepola.ini` (o la ruta que devuelva `GetAppConfigDir`).
 

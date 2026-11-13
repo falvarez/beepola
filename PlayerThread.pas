@@ -3,12 +3,14 @@ unit PlayerThread;
 interface
 
 uses
-  Windows, Classes, Messages, SpecEmu, STSong, STPatterns;
+  {$IFNDEF FPC}Windows, Messages, {$ENDIF}Classes, SpecEmu, STSong, STPatterns;
 
+{$IFNDEF FPC}
 const
   WM_USER_NEWPATTERN = WM_USER + 1;
   WM_USER_PATTERNTICK = WM_USER + 2;
   WM_USER_SONGEND = WM_USER + 3;
+{$ENDIF}
   
 type
   TPlayerThread = class(TThread)
@@ -20,13 +22,22 @@ type
     procedure NewPat;
     procedure PatTick;
   public
+{$IFNDEF FPC}
     WaveOutHandle: System.Cardinal;
+{$ENDIF}
     Engine: TEngine;
     Song: TSTSong;
     Pattern: STPatterns.TPattern;
     SvgPattern: STPatterns.TPatternSvg;
     iStartPos: integer;
+{$IFDEF FPC}
+    // Called in the main thread via TThread.Queue
+    OnNewPattern: TThreadMethod;
+    OnPatternTick: TThreadMethod;
+    OnSongEnd: TThreadMethod;
+{$ELSE}
     HMsgWnd: HWND;
+{$ENDIF}
     Volume: integer;
     constructor Create(CreateSuspended: boolean);
   protected
@@ -53,9 +64,11 @@ uses SysUtils;
 
 constructor TPlayerThread.Create(CreateSuspended: boolean);
 begin
-  inherited;
+  inherited Create(CreateSuspended);
+{$IFNDEF FPC}
   HMsgWnd := INVALID_HANDLE_VALUE;
   WaveOutHandle := INVALID_HANDLE_VALUE;
+{$ENDIF}
   Song := nil;
   Volume := 100;
   Pattern.Length := 0;
@@ -64,7 +77,7 @@ end;
 procedure TPlayerThread.Execute;
 begin
   { Place thread code here }
-  ZX := TSpecEmu.Create(WaveOutHandle);
+  ZX := TSpecEmu.Create({$IFDEF FPC}0{$ELSE}WaveOutHandle{$ENDIF});
 
   bPatPlay := false;
   iNewPatCounter := 0;
@@ -91,8 +104,15 @@ begin
   Sleep(210); // Ensure the ZX emu thread is not in it's 200msec spinloop
   FreeAndNil(ZX);
 
+{$IFDEF FPC}
+  // Not tied to Self, so it still arrives after the thread has been freed,
+  // like the PostMessage it replaces
+  if Assigned(OnSongEnd) then
+    Queue(nil, OnSongEnd);
+{$ELSE}
   if HMsgWnd <> INVALID_HANDLE_VALUE then
     PostMessage(HMsgWnd,WM_USER_SONGEND,0,0);
+{$ENDIF}
 end;
 
 procedure TPlayerThread.NewPat;
@@ -103,14 +123,24 @@ begin
     inc(iNewPatCounter);
   end;
 
+{$IFDEF FPC}
+  if Assigned(OnNewPattern) then
+    Queue(nil, OnNewPattern);
+{$ELSE}
   if HMsgWnd <> INVALID_HANDLE_VALUE then
     PostMessage(HMsgWnd,WM_USER_NEWPATTERN,0,0);
+{$ENDIF}
 end;
 
 procedure TPlayerThread.PatTick;
 begin
+{$IFDEF FPC}
+  if Assigned(OnPatternTick) then
+    Queue(nil, OnPatternTick);
+{$ELSE}
   if HMsgWnd <> INVALID_HANDLE_VALUE then
     PostMessage(HMsgWnd,WM_USER_PATTERNTICK,0,0);
+{$ENDIF}
 end;
 
 end.
