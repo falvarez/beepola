@@ -37,6 +37,7 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 - [ ] Crear `BeeperAudio.pas` (AudioQueue, 44100 Hz mono 16-bit, ring buffer de unos 6 frames, `AudioInit/AudioDone/AudioWriteFrame/AudioReset`).
   Verificación: un programa de prueba en consola genera 2 s de onda cuadrada a 440 Hz en frames de 882 muestras; se oye limpia y dura unos 2 s (`time`).
+  Hecho salvo la escucha: la prueba tarda 2,02 s (1,88 s escribiendo + vaciado del ring) y da 0 underruns mientras suena (el único que cuenta es el vaciado final). Dos trampas resueltas: `constref` para el `AudioStreamBasicDescription` (con `cdecl`, `const` pasa el record por valor) y `SetExceptionMask` (CoreAudio dispara excepciones FP que FPC desenmascara por defecto). PENDIENTE: confirmar a oído que suena limpia.
 - [ ] `SpecEmu.pas`: quitar `MMSystem`/WaveOut/`GlobalAlloc`; `OutputWave` usa `AudioWriteFrame`; throttle en `Interrupt` basado en el bloqueo del audio, con fallback por `GetTickCount64`/`Sleep`; `CopyMemory` → `Move`.
   Verificación: `fpc -Mdelphi SpecEmu.pas` compila; un programa de prueba carga `sfx_img`, pone una nota y ejecuta 100 interrupciones → se oye la nota durante unos 2 s.
 
