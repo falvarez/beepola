@@ -217,12 +217,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);
@@ -255,12 +259,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);
@@ -292,12 +300,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);
@@ -327,12 +339,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);
@@ -362,12 +378,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);
@@ -396,12 +416,16 @@ begin
 
   ReadASMTableFile(ExtractFilePath(Application.ExeName) + '\z80.tab');
 
+{$IFDEF FPC}
+  sFileName := GetTempFileName('','BPO');
+{$ELSE}
   SetLength(sFilePath,255);
   if GetTempPath(255,PChar(sFilePath)) = 0 then exit;
 
   SetLength(sFileName,255);
   if GetTempFileName(PAnsiChar(sFilePath),'BPO',0,PAnsiChar(sFileName)) = 0 then exit;
   sFileName := Copy(sFileName,1,Pos(#0,sFileName)-1);
+{$ENDIF}
 
   AssembleStringList(slAsm,sFileName,Binary,ASCII);
   Result := STO_GetFileSize(sFileName);

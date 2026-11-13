@@ -51,7 +51,7 @@ implementation
 
 { TSongRipper }
 
-uses SysUtils, Forms, Windows, frmSTMainWnd;
+uses SysUtils, Forms, {$IFDEF FPC}LCLType{$ELSE}Windows{$ENDIF}, frmSTMainWnd;
 
 procedure TSongRipper.RipTheMusicBox(iLoc: integer; iPatLen: integer);
 var

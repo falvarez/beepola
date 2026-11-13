@@ -3,14 +3,14 @@ unit frmSongRipper;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, SongRipper, Mask, JvExMask, JvToolEdit, Grids;
+  {$IFDEF FPC}LCLIntf, LCLType, LMessages,{$ELSE}Windows, Messages,{$ENDIF} SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, SongRipper, {$IFDEF FPC}EditBtn{$ELSE}Mask, JvExMask, JvToolEdit{$ENDIF}, Grids;
 
 type
   TSongRipperDlg = class(TForm)
     cmdOK: TButton;
     cmdCancel: TButton;
-    filSpecFile: TJvFilenameEdit;
+    filSpecFile: {$IFDEF FPC}TFileNameEdit{$ELSE}TJvFilenameEdit{$ENDIF};
     Label1: TLabel;
     grdSongList: TStringGrid;
     lblDefLen: TLabel;

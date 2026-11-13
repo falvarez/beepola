@@ -3,7 +3,7 @@ unit frmExportWavDlg;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  {$IFDEF FPC}LCLIntf, LCLType, LMessages,{$ELSE}Windows, Messages,{$ENDIF} SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, SpecEmu;
 
 type
@@ -105,7 +105,7 @@ begin
   if sFileName = '' then exit;
   
 
-  SpecEmu := TSpecEmu.Create(STMainWnd.hWaveOut);
+  SpecEmu := TSpecEmu.Create({$IFDEF FPC}0{$ELSE}STMainWnd.hWaveOut{$ENDIF});
   if STMainWnd.Song.PreferredEngine = 'SFX' then
     SpecEmu.Engine := SFX
   else if STMainWnd.Song.PreferredEngine = 'TMB' then
@@ -156,8 +156,7 @@ begin
   else
   begin
     // Timed output
-    iTargetLen := StrToIntDef(txtWavSecs.Text,0);
-    iTargetLen := Trunc(Abs(iTargetLen * 44100));
+    iTargetLen := Abs(StrToIntDef(txtWavSecs.Text,0)) * 44100;
     pbrExport.Max := iTargetLen;
     while SpecEmu.WavDataLength < iTargetLen do
     begin

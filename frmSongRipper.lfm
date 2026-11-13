@@ -65,13 +65,11 @@ object SongRipperDlg: TSongRipperDlg
     ModalResult = 2
     TabOrder = 1
   end
-  object filSpecFile: TJvFilenameEdit
+  object filSpecFile: TFileNameEdit
     Left = 65
     Top = 16
     Width = 282
     Height = 19
-    AddQuotes = False
-    BevelOuter = bvSpace
     Flat = True
     Filter = 
       'All supported files (*.tap; *.z80)|*.tap;*.z80|Spectrum Tape Fil' +
