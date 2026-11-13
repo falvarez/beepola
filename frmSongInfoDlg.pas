@@ -36,7 +36,7 @@ implementation
 uses frmSTMainWnd, Assemb, AsmTypes, GrokUtils,
      SFX_Engine, TMB_Engine, MSD_Engine, P1D_Engine, P1S_Engine, SVG_Engine;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 procedure TSongInfoDlg.FormShow(Sender: TObject);
 begin

@@ -334,7 +334,7 @@ uses frmCompileDlg, frmCopyPattern, frmTransposePatternDlg,
   frmImportVTIIFileDlg, frmAdjustSongTempoDlg, frmOptionsDlg,
   frmSongRipper;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 {$R BeepolaData.res}
 
 var

@@ -30,7 +30,7 @@ implementation
 
 uses frmSTMainWnd;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 function TTransposeSongDlg.IsOffScale(): boolean;
 var

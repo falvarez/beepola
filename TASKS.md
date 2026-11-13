@@ -53,8 +53,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 6. Formularios
 
-- [ ] Script (en el scratchpad) que convierte `*.dfm` → `*.lfm` y elimina las propiedades VCL no soportadas; cambiar `{$R *.dfm}` → `{$R *.lfm}` en cada `frm*.pas`.
+- [x] Script (en el scratchpad) que convierte `*.dfm` → `*.lfm` y elimina las propiedades VCL no soportadas; cambiar `{$R *.dfm}` → `{$R *.lfm}` en cada `frm*.pas`.
   Verificación: existen 15 `.lfm`; `grep -l 'OldCreateOrder\|Explicit' *.lfm` no devuelve nada.
+  Hecho: se eliminan `OldCreateOrder`, `TextHeight`, `DesignSize` (multilínea), `ParentFlat` y `Explicit*` (112 líneas, cuadra con el recuento previo). Los `.dfm` se conservan y los `.pas` usan `{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}`. Nota: LCL 4.8 ya ignoraba casi todas al cargar; `ParentFlat` no existe en LCL. El resto (p. ej. `TImageList.Bitmap` en formato Delphi, que LCL dice leer) se comprobará al arrancar (sección 7).
 - [ ] Ajustar la cláusula `uses` de los diálogos simples (`Windows, Messages` → `LCLIntf, LCLType, LMessages`): CopyPattern, TransposePattern/Song, SwapChannels, PatternAppend, AdjustSongTempo, Options, KeyLayout, SongInfo, About.
   Verificación: cada unidad compila con `lazbuild` (los errores restantes quedan solo en `frmSTMainWnd`, `frmCompileDlg`, `frmExportWavDlg`, `frmImportVTIIFileDlg` y `frmSongRipper`).
 - [ ] `TJvFilenameEdit` → `TFileNameEdit` (unidad `EditBtn`) en el `.lfm` y el `.pas` correspondientes.

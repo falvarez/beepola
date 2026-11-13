@@ -40,7 +40,7 @@ implementation
 
 uses frmSTMainWnd;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 procedure TSongRipperDlg.SetConvertButton();
 begin

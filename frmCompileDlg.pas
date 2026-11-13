@@ -64,7 +64,7 @@ uses frmSTMainWnd, SFX_Engine, TMB_Engine, MSD_Engine, P1D_Engine, P1S_Engine,
      SVG_Engine, RMB_Engine,
      Assemb, AsmTypes, GrokUtils;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 procedure TCompileDlg.cboEngineChange(Sender: TObject);
 begin

@@ -31,7 +31,7 @@ implementation
 
 uses frmSTMainWnd;
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 procedure TOptionsDlg.cmdOKClick(Sender: TObject);
 begin
