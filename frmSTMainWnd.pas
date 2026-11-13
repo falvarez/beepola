@@ -3,8 +3,8 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, Menus, Grids, StdCtrls, ComCtrls, ExtCtrls, MMSystem, STSong,
+  {$IFDEF FPC}LCLIntf, LCLType, LMessages,{$ELSE}Windows, Messages,{$ENDIF} SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, Menus, Grids, StdCtrls, ComCtrls, ExtCtrls, {$IFNDEF FPC}MMSystem, {$ENDIF}STSong,
   SpecEmu, STPatterns, Buttons, ImgList, PlayerThread, MRUList, RegSettings;
 
 type
@@ -291,9 +291,16 @@ type
     function GetPhaser1Instr(iRow: integer): byte;
     procedure Phaser1PatternTick;
     procedure P1InstrumentTestNewPattern;
+{$IFDEF FPC}
+    // TPlayerThread events, run in the main thread
+    procedure WM_NewPattern;
+    procedure WM_PatternTick;
+    procedure WM_SongEnd;
+{$ELSE}
     procedure WM_NewPattern(var Msg: TMessage); message WM_USER_NEWPATTERN;
     procedure WM_PatternTick(var Msg: TMessage); message WM_USER_PATTERNTICK;
     procedure WM_SongEnd(var Msg: TMessage); message WM_USER_SONGEND;
+{$ENDIF}
     procedure StopPlayer;
     procedure UpdateMRUMenu;
     procedure mnuMRUItemClick(Sender: TObject);
@@ -314,7 +321,9 @@ type
     function TripleShrinkRowNotes(iPat: integer): boolean;
   public
     { Public declarations }
+{$IFNDEF FPC}
     hWaveOut: System.Cardinal;
+{$ENDIF}
     bSongDirty: boolean;
     sFileName: string;
     Song: TSTSong;
@@ -329,13 +338,13 @@ var
 implementation
 
 uses frmCompileDlg, frmCopyPattern, frmTransposePatternDlg,
-  frmAboutDlg, frmKeyLayoutWnd, ShellApi, frmSongInfoDlg, frmTransposeSongDlg,
+  frmAboutDlg, frmKeyLayoutWnd, {$IFNDEF FPC}ShellApi, {$ENDIF}frmSongInfoDlg, frmTransposeSongDlg,
   frmExportWavDlg, Math, frmSwapChannelsDlg, frmPatternAppendDlg, IniFiles,
   frmImportVTIIFileDlg, frmAdjustSongTempoDlg, frmOptionsDlg,
-  frmSongRipper;
+  frmSongRipper{$IFDEF FPC}, BeeperAudio{$ENDIF};
 
 {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
-{$R BeepolaData.res}
+{$R BeepolaData.RES}
 
 var
   CopyPattern: STPatterns.TPattern;
@@ -364,7 +373,7 @@ var
 begin
   if bStopPlayer = false then exit;
 
-  Spec := TSpecEmu.Create(Self.hWaveOut);
+  Spec := TSpecEmu.Create({$IFDEF FPC}0{$ELSE}Self.hWaveOut{$ENDIF});
   Spec.Engine := P1D;
 
   Spec.Register_SP := $7FF0; // stack pointer - 32752
@@ -393,7 +402,7 @@ var
 begin
   if bStopPlayer = false then exit;
 
-  Spec := TSpecEmu.Create(Self.hWaveOut);
+  Spec := TSpecEmu.Create({$IFDEF FPC}0{$ELSE}Self.hWaveOut{$ENDIF});
   Spec.Engine := SVG;
 
   Spec.Register_SP := $7FF0; // stack pointer - 32752
@@ -499,11 +508,13 @@ begin
 end;
 
 procedure TSTMainWnd.FormCreate(Sender: TObject);
+{$IFNDEF FPC}
 var
   TimeCaps: TTimeCaps;
   iRet: integer;
   sErrMsg: string;
   WavFormat: TWaveFormatEx;
+{$ENDIF}
 begin
   MRUList := TMRUList.Create();
   MRUList.Size := 5;
@@ -515,6 +526,13 @@ begin
   bSongDirty := false;
   sFileName := '';
 
+{$IFDEF FPC}
+  // Without audio the emulation still runs, paced by the system clock
+  if not AudioInit() then
+    ShowMessage('Error initialising the audio output. Playback will be silent.');
+
+  SpecEmu := TSpecEmu.Create(0);
+{$ELSE}
   hWaveOut := INVALID_HANDLE_VALUE;
 
   with WavFormat do
@@ -539,6 +557,7 @@ begin
   end;
 
   SpecEmu := TSpecEmu.Create(Self.hWaveOut);
+{$ENDIF}
   SpecEmu.Engine := sfx;
 
   Self.DoubleBuffered := true;
@@ -553,9 +572,11 @@ begin
 
   UpdateMRUMenu();
 
+{$IFNDEF FPC}
   timeGetDevCaps(@TimeCaps,SizeOf(TimeCaps));
   iTimerPeriod := TimeCaps.wPeriodMin;
   timeBeginPeriod(iTimerPeriod);
+{$ENDIF}
 end;
 
 procedure TSTMainWnd.UpdateMRUMenu();
@@ -656,11 +677,17 @@ end;
 
 procedure TSTMainWnd.FormDestroy(Sender: TObject);
 begin
+{$IFNDEF FPC}
   timeEndPeriod(iTimerPeriod);
+{$ENDIF}
   FreeAndNil(MRUList);
   FreeAndNil(SpecEmu);
   FreeAndNil(Song);
+{$IFDEF FPC}
+  AudioDone();
+{$ELSE}
   WaveOutClose(hWaveOut);
+{$ENDIF}
 end;
 
 procedure TSTMainWnd.FormKeyDown(Sender: TObject; var Key: Word;
@@ -2417,9 +2444,22 @@ begin
 end;
 
 procedure TSTMainWnd.mnuHelpOnlineClick(Sender: TObject);
+{$IFDEF FPC}
+var
+  sHelp: string;
+begin
+  // build_macos.sh copies the help into Beepola.app/Contents/Resources/help
+  sHelp := ExpandFileName(ExtractFilePath(Application.ExeName) + '../Resources/help/index.html');
+  if FileExists(sHelp) then
+    OpenDocument(sHelp)
+  else
+    OpenURL('http://freestuff.grok.co.uk/beepola/help/');
+end;
+{$ELSE}
 begin
   ShellExecute(0,'open','iexplore.exe',PChar('http://freestuff.grok.co.uk/beepola/help/'),nil,SW_SHOWNORMAL);
 end;
+{$ENDIF}
 
 procedure TSTMainWnd.mnuImportRipperClick(Sender: TObject);
 begin
@@ -2973,11 +3013,19 @@ begin
 
   FreeAndNil(ZXPlay);
   ZXPlay := TPlayerThread.Create(true);
+{$IFNDEF FPC}
   ZXPlay.WaveOutHandle := Self.hWaveOut;
+{$ENDIF}
   ZXPlay.Engine := SpecEmu.Engine;
   ZXPlay.Song := Song;
   ZXPlay.iStartPos := grdSong.Col;
+{$IFDEF FPC}
+  ZXPlay.OnNewPattern := WM_NewPattern;
+  ZXPlay.OnPatternTick := WM_PatternTick;
+  ZXPlay.OnSongEnd := WM_SongEnd;
+{$ELSE}
   ZXPlay.HMsgWnd := Self.Handle;
+{$ENDIF}
 
   iPatternPlayer := grdSong.Col-1;
   iPatternTickCount := 0;
@@ -3025,13 +3073,21 @@ begin
 
   FreeAndNil(ZXPlay);
   ZXPlay := TPlayerThread.Create(true);
+{$IFNDEF FPC}
   ZXPlay.WaveOutHandle := Self.hWaveOut;
+{$ENDIF}
   ZXPlay.Engine := SpecEmu.Engine;
   ZXPlay.Song := Song;
   ZXPlay.SvgPattern := Song.SvgPatternData[udnPatternNum.Position];
   ZXPlay.Pattern := Song.Pattern[udnPatternNum.Position];
   ZXPlay.iStartPos := 0;
+{$IFDEF FPC}
+  ZXPlay.OnNewPattern := WM_NewPattern;
+  ZXPlay.OnPatternTick := WM_PatternTick;
+  ZXPlay.OnSongEnd := WM_SongEnd;
+{$ELSE}
   ZXPlay.HMsgWnd := Self.Handle;
+{$ENDIF}
 
   iPatternPlayer := 0;
   iPatternTickCount := 0;
@@ -3105,11 +3161,19 @@ begin
 
   FreeAndNil(ZXPlay);
   ZXPlay := TPlayerThread.Create(true);
+{$IFNDEF FPC}
   ZXPlay.WaveOutHandle := Self.hWaveOut;
+{$ENDIF}
   ZXPlay.Engine := SpecEmu.Engine;
   ZXPlay.Song := Song;
   ZXPlay.iStartPos := 0;
+{$IFDEF FPC}
+  ZXPlay.OnNewPattern := WM_NewPattern;
+  ZXPlay.OnPatternTick := WM_PatternTick;
+  ZXPlay.OnSongEnd := WM_SongEnd;
+{$ELSE}
   ZXPlay.HMsgWnd := Self.Handle;
+{$ENDIF}
 
   iPatternPlayer := -1;
   iPatternTickCount := 0;
@@ -3678,6 +3742,15 @@ begin
   grdPattern.SetFocus();
 end;
 
+{$IFDEF FPC}
+// There is no per-thread keyboard layout id on macOS: use the US QWERTY
+// note mapping (the default branch below)
+function GetKeyboardLayout(dwLayout: Cardinal): Cardinal;
+begin
+  Result := $04090409;
+end;
+{$ENDIF}
+
 function TSTMainWnd.IsValidNoteKey(Key: Char): boolean;
 var
   i: cardinal;
@@ -3691,7 +3764,7 @@ begin
       case Key of
       'w','s','x','d','c','v','g','b','h','n','j',',','l',';','m',':':
         Result := true;
-      'a','é','z','"','e','r','(','t','-','y','è','u','i','ç','o','à','p':
+      'a',#$E9,'z','"','e','r','(','t','-','y',#$E8,'u','i',#$E7,'o',#$E0,'p':
         Result := true;
       'q','&':
         Result := true;
@@ -3704,7 +3777,7 @@ begin
       // QWERTZ (Germany, Poland, Slovenia/etc) layout
       if (Key >= 'A') and (Key <= 'Z') then Inc(Key,32);
       case Key of
-      'y','s','x','d','c','v','g','b','h','n','j','m',',','l','.','ö','-':
+      'y','s','x','d','c','v','g','b','h','n','j','m',',','l','.',#$F6,'-':
         Result := true;
       'q','2','w','3','e','r','5','t','6','z','7','u','i','9','o','0','p':
         Result := true;
@@ -3771,7 +3844,7 @@ begin
       ':': iNote := 14;
       'm': iNote := 15;
       'a': iNote := 12;
-      'é': iNote := 13;
+      #$E9: iNote := 13;
       'z': iNote := 14;
       '"': iNote := 15;
       'e': iNote := 16;
@@ -3780,12 +3853,12 @@ begin
       't': iNote := 19;
       '-': iNote := 20;
       'y': iNote := 21;
-      'è': iNote := 22;
+      #$E8: iNote := 22;
       'u': iNote := 23;
       'i': iNote := 24;
-      'ç': iNote := 25;
+      #$E7: iNote := 25;
       'o': iNote := 26;
-      'à': iNote := 27;
+      #$E0: iNote := 27;
       'p': iNote := 28;
       end;
     end;
@@ -3813,7 +3886,7 @@ begin
       ',': iNote := 12;
       'l': iNote := 13;
       '.': iNote := 14;
-      'ö': iNote := 15;
+      #$F6: iNote := 15;
       '-': iNote := 16;
       'q': iNote := 12;
       '2': iNote := 13;
@@ -4114,7 +4187,7 @@ begin
   udnPatternNum.Position := StrToIntDef(grdSong.Cells[grdSong.Col,grdSong.RowCount-1],udnPatternNum.Position);
 end;
 
-procedure TSTMainWnd.WM_NewPattern(var Msg: TMessage);
+procedure TSTMainWnd.WM_NewPattern{$IFNDEF FPC}(var Msg: TMessage){$ENDIF};
 begin
   if FPlaying = PLAY_SONG then
     SongPlayerNewPattern()
@@ -4122,7 +4195,7 @@ begin
     PatternPlayerNewPattern();
 end;
 
-procedure TSTMainWnd.WM_PatternTick(var Msg: TMessage);
+procedure TSTMainWnd.WM_PatternTick{$IFNDEF FPC}(var Msg: TMessage){$ENDIF};
 begin
   if SpecEmu.Engine = SFX then
     PatternTick()
@@ -4132,7 +4205,7 @@ begin
     TMBPatternTick();
 end;
 
-procedure TSTMainWnd.WM_SongEnd(var Msg: TMessage);
+procedure TSTMainWnd.WM_SongEnd{$IFNDEF FPC}(var Msg: TMessage){$ENDIF};
 begin
   grdPattern.Options := [goFixedVertLine,goFixedHorzLine,goVertLine,goTabs,goThumbTracking];
 

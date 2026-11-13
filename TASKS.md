@@ -59,12 +59,16 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Ajustar la cláusula `uses` de los diálogos simples (`Windows, Messages` → `LCLIntf, LCLType, LMessages`): CopyPattern, TransposePattern/Song, SwapChannels, PatternAppend, AdjustSongTempo, Options, KeyLayout, SongInfo, About.
   Verificación: cada unidad compila con `lazbuild` (los errores restantes quedan solo en `frmSTMainWnd`, `frmCompileDlg`, `frmExportWavDlg`, `frmImportVTIIFileDlg` y `frmSongRipper`).
   Hecho: `{$IFDEF FPC}LCLIntf, LCLType, LMessages,{$ELSE}Windows, Messages,{$ENDIF}`. `frmKeyLayoutWnd` compila entero; los otros 9 llegan hasta `uses frmSTMainWnd` y se paran ahí, así que su implementación se valida en la tarea de `frmSTMainWnd`. En About: fuera JVCL/`jpeg`/`ToolWin` (no se usaban), `WM_USER_NEWPATTERN` → `OnNewPattern`, `Suspend` → `Terminate` (en Unix no se puede suspender otro hilo) y «Saša Pušica» como UTF-8 (el fuente está en CP1252).
-- [ ] `TJvFilenameEdit` → `TFileNameEdit` (unidad `EditBtn`) en el `.lfm` y el `.pas` correspondientes.
+- [x] `TJvFilenameEdit` → `TFileNameEdit` (unidad `EditBtn`) en el `.lfm` y el `.pas` correspondientes.
   Verificación: la unidad compila.
-- [ ] `frmExportWavDlg`, `frmCompileDlg`, `frmImportVTIIFileDlg`, `frmSongRipper`, `SongRipper.pas`: `uses` y quitar las referencias a `hWaveOut`.
+  Hecho: en el `.lfm` fuera `AddQuotes` y `BevelOuter` (el resto de propiedades existen en `TFileNameEdit`); en el `.pas`, tipo y `uses` bajo `{$IFDEF FPC}`. Compila (ver la tarea siguiente).
+- [x] `frmExportWavDlg`, `frmCompileDlg`, `frmImportVTIIFileDlg`, `frmSongRipper`, `SongRipper.pas`: `uses` y quitar las referencias a `hWaveOut`.
   Verificación: las unidades compilan.
+  Hecho: las cinco compilan en el build del proyecto. Además: `GetTempPath`/`GetTempFileName` de Win32 → `SysUtils.GetTempFileName` en `frmSongInfoDlg` (6 sitios); en `frmExportWavDlg`, `Trunc(Abs(cardinal))` era ambiguo en FPC y el `Abs` llegaba tarde (tras convertir a `Cardinal`): ahora `Abs(StrToIntDef(...)) * 44100`. La ruta `'\z80.tab'` que se pasa a `ReadASMTableFile` se ignora (lee el recurso), así que no hace falta tocarla.
 - [ ] `frmSTMainWnd.pas`: inicializar/cerrar el audio en `FormCreate/FormDestroy`, quitar `timeBeginPeriod` y similares, convertir los manejadores `WM_*` en eventos del hilo, ayuda con `OpenDocument`.
   Verificación: `lazbuild Beepola.lpi` termina sin errores y genera el binario.
+  Hecho el código: todas las unidades del proyecto compilan con `lazbuild`, pero el enlazado falla igual que en 1.3 (`malformed method list atom … cocoawsextctrls.o`). Cambios: `AudioInit`/`AudioDone` (si el audio no abre se avisa y se sigue con el reloj de reserva, en vez de salir dejando `SpecEmu` a `nil`), sin `timeBeginPeriod`, `WM_*` → métodos sin parámetros asignados a los eventos de `ZXPlay` en los 3 sitios, ayuda con `OpenDocument(<bundle>/Contents/Resources/help/index.html)` (o la URL si no está), literales `'é'` etc. → `#$E9`… (mismo valor CP1252 que daba Delphi), `GetKeyboardLayout` sustituido por un QWERTY fijo y `{$R BeepolaData.RES}` con el nombre exacto (FPC distingue mayúsculas).
+  BLOQUEADA: falta el binario; depende de la solución de enlazado de la tarea 1.3 (FPC 3.2.4).
 
 ## 7. Primera ejecución
 
