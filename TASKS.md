@@ -1,0 +1,89 @@
+# Tareas: port de Beepola a macOS
+
+Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; cada una indica cómo verificarla.
+
+## 1. Toolchain
+
+- [ ] Instalar FPC con Homebrew (`brew install fpc`).
+  Verificación: `fpc -i` muestra la versión y `fpc -iTP` incluye `aarch64`.
+- [ ] Descargar el código fuente estable de Lazarus en `~/opt/lazarus` y compilar `lazbuild` (`make lazbuild`).
+  Verificación: `~/opt/lazarus/lazbuild --version` imprime la versión.
+- [ ] Compilar un "hola mundo" LCL/Cocoa de prueba (un form con un botón) en el scratchpad con `lazbuild --ws=cocoa`.
+  Verificación: el binario arranca y muestra la ventana. Si el enlazado falla, probar `-k-ld_classic` y anotar el flag necesario en `docs/PLAN.md`.
+
+## 2. Esqueleto del proyecto
+
+- [ ] Crear `Beepola.lpr` (a partir de `Beepola.dpr`: `Interfaces` antes de `Forms`, sin `MainFormOnTaskbar`, `{$R BeepolaData.res}`) y `Beepola.lpi` (modo Delphi, widgetset cocoa, aarch64-darwin, `-k-ld_classic` si hizo falta).
+  Verificación: `lazbuild Beepola.lpi` empieza a compilar unidades (los errores en unidades concretas son aceptables en este punto).
+- [ ] Añadir a `.gitignore` las salidas de compilación (`lib/`, `*.o`, `*.ppu`, `Beepola.app/`, binario `Beepola`).
+  Verificación: tras un build, `git status` no muestra artefactos.
+
+## 3. Núcleo sin interfaz gráfica
+
+- [ ] Hacer que compilen las unidades puras: `AsmTypes`, `AsmUtils`, `AsmPass1`, `AsmPass2`, `Assemb`, `STPatterns`, `STInstruments`, `STSong`, `*_Engine.pas`.
+  Verificación: `fpc -Mdelphi -Fu. <unidad>.pas` compila cada unidad sin errores.
+- [ ] `GrokUtils.pas`: `Sto_GetFileSize` con `FileSize` de FPC; `GetAppVersionInfo` devuelve una constante.
+  Verificación: `fpc -Mdelphi GrokUtils.pas` compila; un programa de prueba en el scratchpad imprime el tamaño correcto de `z80.tab` (14096).
+- [ ] Comprobar que `TResourceStream` lee `BeepolaData.RES` en Darwin.
+  Verificación: un programa de prueba con `{$R BeepolaData.res}` carga `z80_tab` (14096 bytes) y `sfx_img` (65536 bytes).
+
+## 4. Audio
+
+- [ ] Crear `BeeperAudio.pas` (AudioQueue, 44100 Hz mono 16-bit, ring buffer de unos 6 frames, `AudioInit/AudioDone/AudioWriteFrame/AudioReset`).
+  Verificación: un programa de prueba en consola genera 2 s de onda cuadrada a 440 Hz en frames de 882 muestras; se oye limpia y dura unos 2 s (`time`).
+- [ ] `SpecEmu.pas`: quitar `MMSystem`/WaveOut/`GlobalAlloc`; `OutputWave` usa `AudioWriteFrame`; throttle en `Interrupt` basado en el bloqueo del audio, con fallback por `GetTickCount64`/`Sleep`; `CopyMemory` → `Move`.
+  Verificación: `fpc -Mdelphi SpecEmu.pas` compila; un programa de prueba carga `sfx_img`, pone una nota y ejecuta 100 interrupciones → se oye la nota durante unos 2 s.
+
+## 5. Hilo de reproducción y settings
+
+- [ ] `PlayerThread.pas`: sustituir `PostMessage`/`HMsgWnd`/`WaveOutHandle` por eventos `OnNewPattern/OnPatternTick/OnSongEnd` disparados con `TThread.Queue`.
+  Verificación: la unidad compila; el test se hace en la tarea de reproducción de la sección 7.
+- [ ] Reescribir `RegSettings.pas` y `MRUList.pas` sobre `TIniFile` en `GetAppConfigDir`, con la misma interfaz pública.
+  Verificación: un programa de prueba guarda las opciones y 3 entradas MRU, las relee y las imprime; existe `~/.config/…/beepola.ini` (o la ruta que devuelva `GetAppConfigDir`).
+
+## 6. Formularios
+
+- [ ] Script (en el scratchpad) que convierte `*.dfm` → `*.lfm` y elimina las propiedades VCL no soportadas; cambiar `{$R *.dfm}` → `{$R *.lfm}` en cada `frm*.pas`.
+  Verificación: existen 15 `.lfm`; `grep -l 'OldCreateOrder\|Explicit' *.lfm` no devuelve nada.
+- [ ] Ajustar la cláusula `uses` de los diálogos simples (`Windows, Messages` → `LCLIntf, LCLType, LMessages`): CopyPattern, TransposePattern/Song, SwapChannels, PatternAppend, AdjustSongTempo, Options, KeyLayout, SongInfo, About.
+  Verificación: cada unidad compila con `lazbuild` (los errores restantes quedan solo en `frmSTMainWnd`, `frmCompileDlg`, `frmExportWavDlg`, `frmImportVTIIFileDlg` y `frmSongRipper`).
+- [ ] `TJvFilenameEdit` → `TFileNameEdit` (unidad `EditBtn`) en el `.lfm` y el `.pas` correspondientes.
+  Verificación: la unidad compila.
+- [ ] `frmExportWavDlg`, `frmCompileDlg`, `frmImportVTIIFileDlg`, `frmSongRipper`, `SongRipper.pas`: `uses` y quitar las referencias a `hWaveOut`.
+  Verificación: las unidades compilan.
+- [ ] `frmSTMainWnd.pas`: inicializar/cerrar el audio en `FormCreate/FormDestroy`, quitar `timeBeginPeriod` y similares, convertir los manejadores `WM_*` en eventos del hilo, ayuda con `OpenDocument`.
+  Verificación: `lazbuild Beepola.lpi` termina sin errores y genera el binario.
+
+## 7. Primera ejecución
+
+- [ ] Arrancar la app y corregir los errores de carga de los `.lfm` (propiedades desconocidas, etc.).
+  Verificación: `./Beepola` (o `open Beepola.app`) muestra la ventana principal sin excepciones; abrir cada diálogo del menú no lanza errores.
+- [ ] Tocar notas con el teclado en el editor de patrones.
+  Verificación: suena cada nota y la octava cambia correctamente.
+- [ ] Reproducir patrón y canción con cada motor (SFX, TMB, MSD, P1D, P1S, SVG, RMB, PLP).
+  Verificación: el audio va a tempo, el resaltado de fila avanza y Stop corta limpio, sin bloqueos.
+- [ ] Probar los botones de test de instrumento Phaser1 y de ornamento Savage.
+  Verificación: suenan y devuelven el control a la UI.
+
+## 8. Adaptaciones Mac
+
+- [ ] Atajos alternativos: Insert también con Ctrl+I, octava con Ctrl+1…5; en los menús, Ctrl → Cmd bajo `{$IFDEF DARWIN}`.
+  Verificación: en un MacBook sin teclado numérico se insertan filas, se cambia de octava y Cmd+S/Cmd+O funcionan.
+- [ ] Ajustes visuales: fuentes, alturas de las rejillas, owner-draw de `grdPattern`/`grdSong`, `pbxLoopStart`.
+  Verificación: comparación visual con la versión de Windows; ningún texto cortado ni solapado.
+
+## 9. Funcionalidad de ficheros
+
+- [ ] Guardar y abrir un `.bbsong`.
+  Verificación: guardar, cerrar, reabrir → contenido idéntico; `cmp` entre dos guardados consecutivos sin cambios.
+- [ ] Exportar a WAV.
+  Verificación: `afplay` reproduce el fichero; `afinfo` muestra 44100 Hz, mono, 8-bit y la duración esperada.
+- [ ] Compilar a `.tap`/`.asm` desde el diálogo Compile con cada motor.
+  Verificación: el `.tap` carga y suena en un emulador (p. ej. Fuse); si es posible, `cmp` con la salida de `Beepola.exe` original.
+- [ ] Persistencia de opciones y MRU.
+  Verificación: cambiar las opciones, abrir 2 canciones, reiniciar la app → las opciones y la lista MRU se conservan.
+
+## 10. Empaquetado
+
+- [ ] `build_macos.sh`: compila, monta `Beepola.app` (`Info.plist`, `Beepola.icns` generado con `sips`/`iconutil`, `help/` en `Resources`) y firma en ad-hoc (`codesign -s -`).
+  Verificación: `./build_macos.sh && codesign -v Beepola.app && open Beepola.app`; el menú Ayuda abre la ayuda local.
