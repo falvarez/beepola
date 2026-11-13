@@ -88,10 +88,10 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 8. Adaptaciones Mac
 
-- [ ] Atajos alternativos: Insert también con Ctrl+I, octava con Ctrl+1…5; en los menús, Ctrl → Cmd bajo `{$IFDEF DARWIN}`.
+- [x] Atajos alternativos: Insert también con Ctrl+I, octava con Ctrl+1…5; en los menús, Ctrl → Cmd bajo `{$IFDEF DARWIN}`.
   Verificación: en un MacBook sin teclado numérico se insertan filas, se cambia de octava y Cmd+S/Cmd+O funcionan.
-  Pendiente relacionado: `GetKeyboardLayout` devuelve ahora siempre QWERTY en macOS; para AZERTY/QWERTZ habría que leer la distribución activa (`TISCopyCurrentKeyboardLayoutInputSource`).
-  Hecho el código (bajo `{$IFDEF DARWIN}`): Ctrl+I → `VK_INSERT`; Ctrl+1…5 fijan la octava (sin enfocar `udnOctave`), y el `KeyPress` que pueda seguir se descarta hasta el `KeyUp` para que no entre como nota; Retroceso actúa como Supr en las rejillas (la tecla «delete» del Mac); en los menús Ctrl → Cmd, más Cmd+N/Cmd+O, que el original no tenía (Cmd+Shift+S ya es «Shrink ×2»). Comprobado llamando a los manejadores (`keytest -check`): atajos Meta+…, octava, inserción de fila y teclado numérico original sin excepciones. PENDIENTE: probar con el teclado real de un MacBook (o dar permiso de Accesibilidad para automatizarlo).
+  Distribuciones AZERTY/QWERTZ: ver «Más adelante».
+  Hecho el código (bajo `{$IFDEF DARWIN}`): Ctrl+I → `VK_INSERT`; Ctrl+1…5 fijan la octava (sin enfocar `udnOctave`), y el `KeyPress` que pueda seguir se descarta hasta el `KeyUp` para que no entre como nota; Retroceso actúa como Supr en las rejillas (la tecla «delete» del Mac); en los menús Ctrl → Cmd, más Cmd+N/Cmd+O, que el original no tenía (Cmd+Shift+S ya es «Shrink ×2»). Comprobado llamando a los manejadores (`keytest -check`): atajos Meta+…, octava, inserción de fila y teclado numérico original sin excepciones. Probado por el usuario con el teclado del MacBook: funciona (compuso `sokoban.bbsong`).
 - [x] Ajustes visuales: fuentes, alturas de las rejillas, owner-draw de `grdPattern`/`grdSong`, `pbxLoopStart`.
   Verificación: comparación visual con la versión de Windows; ningún texto cortado ni solapado.
   Hecho: no hay capturas del original para comparar, así que la referencia son los `.lfm`; revisadas con capturas la ventana principal (SFX, Phaser1, Savage) y los 14 diálogos. Tahoma 11 px existe en macOS, el form principal mide exactamente lo diseñado (972×594) y las rejillas owner-draw y `pbxLoopStart` se ven bien. Problemas corregidos con `MacLayout.FixVCLLayout`, que se aplica a todos los forms desde el `.lpr`: en Cocoa los hijos de un `TGroupBox` se recortaban (el área útil empieza 22 px más abajo y pierde 26 px, y la VCL ya desplazaba los hijos por su título), y las etiquetas sueltas junto a casillas sin texto quedaban tapadas por la casilla, más ancha. La ventana Keyboard Layout se ensancha a la línea más larga (ya no cabía en Windows) y muestra las alternativas Mac de Ins, Supr y octava.
@@ -111,3 +111,10 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 - [ ] `build_macos.sh`: compila, monta `Beepola.app` (`Info.plist`, `Beepola.icns` generado con `sips`/`iconutil`, `help/` en `Resources`) y firma en ad-hoc (`codesign -s -`).
   Verificación: `./build_macos.sh && codesign -v Beepola.app && open Beepola.app`; el menú Ayuda abre la ayuda local.
+
+## Más adelante
+
+- [ ] Distribución de teclado en macOS: `GetKeyboardLayout` devuelve siempre QWERTY; leer la distribución activa (`TISCopyCurrentKeyboardLayoutInputSource`) y devolver los identificadores AZERTY (`$040C040C`) y QWERTZ (`$04070407`…) que espera `KeyToNoteVal`/`IsValidNoteKey`.
+  Verificación: con la distribución francesa o alemana activa, las teclas de nota siguen la disposición del piano de esa distribución.
+- [ ] Completar el emulador Z80 de `SpecEmu.pas` para que RMB suene: faltan instrucciones sin prefijo (p. ej. `AND B`), buena parte de `CB`/`ED` y de las indexadas (`DD`/`FD`, `DD CB`). Las ya escritas para `BIT/RES/SET` están en `specemu-full.diff` del scratchpad de la sesión del 2026-11-13. PLP necesita además una imagen de reproductor (`plp_img`) y su cargador, que este código no tiene.
+  Verificación: `keytest -play 6` (o reproducir con RMB en la app) suena sin «emulation error»; comparar la salida WAV con la del `.exe` 1.08.01 si es posible.
