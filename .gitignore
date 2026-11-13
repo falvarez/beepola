@@ -9,3 +9,7 @@ lib/
 Beepola.app/
 Beepola.lps
 backup/
+link*.res
+linkfiles*.res
+ppaslink.sh
+symbol_order*.fpc
