@@ -118,8 +118,8 @@ begin
     SpecEmu.Engine := P1S
   else if STMainWnd.Song.PreferredEngine = 'SVG' then
     SpecEmu.Engine := SVG
-  //else if STMainWnd.Song.PreferredEngine = 'RMB' then
-    //SpecEmu.Engine := RMB
+  else if STMainWnd.Song.PreferredEngine = 'RMB' then
+    SpecEmu.Engine := RMB
   else
     SpecEmu.Engine := SFX;
 

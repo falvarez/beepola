@@ -17,6 +17,7 @@ type
     iPerfFreq: int64;
     iSVGStartPos: integer;
     FVolume: integer;
+    FROMProtected: Boolean;
 {$IFDEF FPC}
     FEmuErrMsg: string;
 {$ENDIF}
@@ -119,6 +120,21 @@ type
     function LoadP1SSong(Song: TSTSong; iStartPos: integer): integer;
     procedure SetVolume(const Value: integer);
     procedure execute_id_cb(op: byte; adr: Word);
+    function GetReg8(i: byte): byte;
+    procedure SetReg8(i, val: byte);
+    function TestCC(y: byte): boolean;
+    function GetRP(p: byte): Word;
+    procedure SetRP(p: byte; w: Word);
+    procedure Alu(y, v: byte);
+    function sll(b: byte): byte;
+    function Rot(y, v: byte): byte;
+    procedure daa;
+    function ExecBase(op: byte): integer;
+    function ExecCB(op: byte): integer;
+    function ExecED(op: byte): integer;
+    function GetIdx8(i: byte): byte;
+    procedure SetIdx8(i, v: byte);
+    function ExecIndexed(op: byte): integer;
     function SvgAddPatternData(Patt: STPatterns.TPattern;
       SvgPatt: STPatterns.TPatternSvg; iChan, iMemPtr: integer): integer;
     procedure SvgAddNoteData(iNote, iNoteLen: integer;
@@ -126,6 +142,8 @@ type
     procedure SVG_AddDrumPatternData(Patt: STPatterns.TPattern;
       var iMemPtr: integer);
     procedure DisplayEmuError(sErr: string; iIntr: byte; regPC: word);
+    function GetMem(Addr: Word): Byte;
+    procedure SetMem(Addr: Word; Value: Byte);
 {$IFDEF FPC}
     procedure ShowEmuError;
 {$ENDIF}
@@ -156,7 +174,7 @@ type
     FLAG_PV = $04;
     FLAG_N  = $02;
     FLAG_C  = $01;
-    FLAG_NOT_PV = $251;
+    FLAG_NOT_PV = $FB;
   public
     hWaveOut: System.Cardinal;
     iIntCycle: integer;
@@ -174,6 +192,13 @@ type
     procedure CloseWaveFile;
     property Register_PC: Word read regPC write regPC;
     property Register_SP: Word read regSP write regSP;
+    // Direct access to the emulated machine, for tests and debugging
+    property Register_A: Byte read regA;
+    property Register_C: Byte read regC;
+    property Register_DE: Word read regDE;
+    property Memory[Addr: Word]: Byte read GetMem write SetMem;
+    // False lets programs write to 0-16383 (e.g. CP/M test programs)
+    property ROMProtected: Boolean read FROMProtected write FROMProtected;
     property OnNewPattern: TNewPatternFunc read FNewPatternFunc write FNewPatternFunc;
     property OnPatternTick: TPatternTickFunc read FPatternTickFunc write FPatternTickFunc;
     property Engine: TEngine read FEngine write SetEngine;
@@ -232,6 +257,7 @@ begin
   iWavDataLen := 0;
   FWav := nil;
   FVolume := 100;
+  FROMProtected := true;
   hWaveOut := hWaveOutIn;
   InitializeWaveOut();
 
@@ -642,11 +668,12 @@ begin
             dec(TStates,7);
           end;
     63:   begin                // CCF
-            regF := (regF and (FLAG_S or FLAG_PV or FLAG_H)) or
-                    (regA and FLAG_3) or
-                    (regA and FLAG_5);
-            if (regF and FLAG_C) <> 0 then regF := regF or FLAG_H;
-            if (regF and FLAG_C) = 0 then regF := regF or FLAG_C;
+            // H takes the old carry, and the carry is inverted
+            if (regF and FLAG_C) <> 0 then
+              regF := (regF and (FLAG_S or FLAG_Z or FLAG_PV)) or FLAG_H
+            else
+              regF := (regF and (FLAG_S or FLAG_Z or FLAG_PV)) or FLAG_C;
+            regF := regF or (regA and FLAG_3) or (regA and FLAG_5);
             dec(TStates,4);
           end;
     65:   begin                // LD B,C
@@ -761,11 +788,11 @@ begin
             dec(TStates,4)
           end;
     96:   begin                // LD H,B
-            regHL := (regHL or $FF) or (regB shl 8);
+            regHL := (regHL and $FF) or (regB shl 8);
             dec(TStates,4);
           end;
     97:   begin                // LD H,C
-            regHL := (regHL or $FF) or (regC shl 8);
+            regHL := (regHL and $FF) or (regC shl 8);
             dec(TStates,4);
           end;
     98:   begin                // LD H,D
@@ -1357,9 +1384,8 @@ begin
             inc(regPC);
             dec(TStates,7)
           end;
-    else  begin
-            DisplayEmuError('Unhandled instruction: $',pcb,regPC-1);
-          end;
+    else
+      dec(TStates, ExecBase(pcb));
     end;
 
     AddWaveOutBuffer(cBeeperVal,TStart - TStates);
@@ -1445,6 +1471,16 @@ begin
 
 end;
 
+function TSpecEmu.GetMem(Addr: Word): Byte;
+begin
+  Result := Mem[Addr];
+end;
+
+procedure TSpecEmu.SetMem(Addr: Word; Value: Byte);
+begin
+  Mem[Addr] := Value;
+end;
+
 function TSpecEmu.LoadImage(sResName: string): integer;
 var
   Stream: TResourceStream;
@@ -1514,7 +1550,7 @@ var
 begin
   ans := (regA + b);
 
-  regF := (ans and (FLAG_S and FLAG_3 and FLAG_5)) or
+  regF := (ans and (FLAG_S or FLAG_3 or FLAG_5)) or
           (((regA and $F) + (b and $F)) and FLAG_H);
   if (ans = 0) then regF := regF or FLAG_Z;
   if ((regA + b) and $100) = $100 then regF := regF or FLAG_C;
@@ -1616,7 +1652,7 @@ begin
   ans := (a + b + c);
 
   regF := ((ans shr 8) and (FLAG_S or FLAG_3 or FLAG_5));
-  if (((a and $FFF) + (b and $FFF) + c) and $1000) <> 0 then regF := regF and FLAG_H;
+  if (((a and $FFF) + (b and $FFF) + c) and $1000) <> 0 then regF := regF or FLAG_H;
   if (ans = 0) then regF := regF or FLAG_Z;
   if ((a + b + c) And $10000) <> 0 then regF := regF or FLAG_C;
 
@@ -1804,7 +1840,7 @@ end;
 
 procedure TSpecEmu.pokeb(addr: Word; b: byte);
 begin
-  if addr < 16384 then exit; // ROM
+  if (addr < 16384) and FROMProtected then exit; // ROM
   Mem[addr] := b;
 end;
 
@@ -2130,10 +2166,8 @@ begin
             Result := 16;
           end;
         end;
-  else  begin
-          DisplayEmuError('Unhandled ED instruction: ED ',pcb,regPC-2);
-          Result := 0;
-        end;
+  else
+    Result := ExecED(pcb);
   end;
 end;
 
@@ -2224,7 +2258,7 @@ begin
          Result := 8;
        end;
   21:  begin                // RL L
-         regDE := (regHL and $FF00) or (rl(regHL and $FF));
+         regHL := (regHL and $FF00) or (rl(regHL and $FF));
          Result := 8;
        end;
   22:  begin                // RL (HL)
@@ -2367,10 +2401,8 @@ begin
          regA := bitSet($80,regA);
          Result := 8;
        end;
-  else  begin
-          DisplayEmuError('Unhandled CB instruction: CB ',pcb,regPC-2);
-          Result := 0;
-        end;
+  else
+    Result := ExecCB(pcb);
   end;
 end;
 
@@ -2573,16 +2605,685 @@ begin
          regPC := regID;
          Result := 8;
        end;
-  else  begin
-          DisplayEmuError('Unhandled ID instruction: ID ',pcb,regPC-2);
-          Result := 0;
+  else
+    Result := ExecIndexed(pcb);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+// Generic Z80 decoding. The case statements above keep their hand-written
+// opcodes (the engines' timing was tuned against them); every opcode they
+// don't list falls through to these, which decode it by its bit fields
+// (x = bits 7-6, y = bits 5-3, z = bits 2-0) with the documented T-states.
+// ---------------------------------------------------------------------------
+
+function TSpecEmu.TestCC(y: byte): boolean;
+begin
+  case y of
+    0: Result := (regF and FLAG_Z) = 0;   // NZ
+    1: Result := (regF and FLAG_Z) <> 0;  // Z
+    2: Result := (regF and FLAG_C) = 0;   // NC
+    3: Result := (regF and FLAG_C) <> 0;  // C
+    4: Result := (regF and FLAG_PV) = 0;  // PO
+    5: Result := (regF and FLAG_PV) <> 0; // PE
+    6: Result := (regF and FLAG_S) = 0;   // P
+  else
+    Result := (regF and FLAG_S) <> 0;     // M
+  end;
+end;
+
+// Register pair operand: BC, DE, HL, SP
+function TSpecEmu.GetRP(p: byte): Word;
+begin
+  case p of
+    0: Result := (regB shl 8) or regC;
+    1: Result := regDE;
+    2: Result := regHL;
+  else
+    Result := regSP;
+  end;
+end;
+
+procedure TSpecEmu.SetRP(p: byte; w: Word);
+begin
+  case p of
+    0: SetBC(w);
+    1: regDE := w;
+    2: regHL := w;
+  else
+    regSP := w;
+  end;
+end;
+
+procedure TSpecEmu.Alu(y, v: byte);
+begin
+  case y of
+    0: add_a(v);
+    1: adc_a(v);
+    2: sub_a(v);
+    3: sbc_a(v);
+    4: and_a(v);
+    5: xor_a(v);
+    6: or_a(v);
+  else
+    cp_a(v);
+  end;
+end;
+
+function TSpecEmu.sll(b: byte): byte;
+begin
+  // Undocumented: shift left, bit 0 set
+  Result := (b shl 1) or 1;
+  regF := ((b and $80) shr 7) or (Result and (FLAG_S or FLAG_3 or FLAG_5)) or Parity[Result];
+end;
+
+function TSpecEmu.Rot(y, v: byte): byte;
+begin
+  case y of
+    0: Result := rlc(v);
+    1: Result := rrc(v);
+    2: Result := rl(v);
+    3: Result := rr(v);
+    4: Result := sla(v);
+    5: Result := sra(v);
+    6: Result := sll(v);
+  else
+    Result := srl(v);
+  end;
+end;
+
+procedure TSpecEmu.daa();
+var
+  diff, c, h: byte;
+begin
+  diff := 0;
+  c := regF and FLAG_C;
+  if ((regF and FLAG_H) <> 0) or ((regA and $F) > 9) then diff := 6;
+  if (c <> 0) or (regA > $99) then
+  begin
+    diff := diff or $60;
+    c := FLAG_C;
+  end;
+  if (regF and FLAG_N) <> 0 then
+  begin
+    if ((regF and FLAG_H) <> 0) and ((regA and $F) < 6) then h := FLAG_H else h := 0;
+    regA := regA - diff;
+  end
+  else
+  begin
+    if (regA and $F) > 9 then h := FLAG_H else h := 0;
+    regA := regA + diff;
+  end;
+  regF := (regA and (FLAG_S or FLAG_3 or FLAG_5)) or Parity[regA] or
+          (regF and FLAG_N) or c or h;
+  if regA = 0 then regF := regF or FLAG_Z;
+end;
+
+function TSpecEmu.ExecBase(op: byte): integer;
+var
+  y, z, p, q, v: byte;
+  w: Word;
+  d: ShortInt;
+begin
+  y := (op shr 3) and 7;
+  z := op and 7;
+  p := y shr 1;
+  q := y and 1;
+  Result := 4;
+  case op shr 6 of
+  0: case z of
+       0: case y of
+            0: ;                                         // NOP
+            1: begin                                     // EX AF,AF'
+                 w := (regA shl 8) or regF;
+                 regA := regAF_ shr 8;
+                 regF := regAF_ and $FF;
+                 regAF_ := w;
+               end;
+            2: begin                                     // DJNZ d
+                 d := ShortInt(Mem[regPC]);
+                 inc(regPC);
+                 dec(regB);
+                 if regB <> 0 then
+                 begin
+                   regPC := Word(regPC + d);
+                   Result := 13;
+                 end
+                 else
+                   Result := 8;
+               end;
+          else
+            d := ShortInt(Mem[regPC]);                   // JR d / JR cc,d
+            inc(regPC);
+            if (y = 3) or TestCC(y - 4) then
+            begin
+              regPC := Word(regPC + d);
+              Result := 12;
+            end
+            else
+              Result := 7;
+          end;
+       1: if q = 0 then
+          begin
+            SetRP(p, NextPCW());                         // LD rp,nn
+            Result := 10;
+          end
+          else
+          begin
+            regHL := add16(regHL, GetRP(p));             // ADD HL,rp
+            Result := 11;
+          end;
+       2: begin
+            case p of
+              0: w := (regB shl 8) or regC;
+              1: w := regDE;
+            else
+              w := NextPCW();
+            end;
+            if q = 0 then
+              case p of
+                2: begin pokew(w, regHL); Result := 16; end; // LD (nn),HL
+                3: begin Mem[w] := regA; Result := 13; end;  // LD (nn),A
+              else
+                begin Mem[w] := regA; Result := 7; end;      // LD (BC/DE),A
+              end
+            else
+              case p of
+                2: begin regHL := peekw(w); Result := 16; end; // LD HL,(nn)
+                3: begin regA := Mem[w]; Result := 13; end;    // LD A,(nn)
+              else
+                begin regA := Mem[w]; Result := 7; end;        // LD A,(BC/DE)
+              end;
+          end;
+       3: begin                                          // INC rp / DEC rp
+            if q = 0 then SetRP(p, Word(GetRP(p) + 1)) else SetRP(p, Word(GetRP(p) - 1));
+            Result := 6;
+          end;
+       4: begin                                          // INC r
+            SetReg8(y, inc8(GetReg8(y)));
+            if y = 6 then Result := 11;
+          end;
+       5: begin                                          // DEC r
+            SetReg8(y, dec8(GetReg8(y)));
+            if y = 6 then Result := 11;
+          end;
+       6: begin                                          // LD r,n
+            v := Mem[regPC];
+            inc(regPC);
+            SetReg8(y, v);
+            if y = 6 then Result := 10 else Result := 7;
+          end;
+     else
+       case y of
+         0: begin                                        // RLCA
+              regA := (regA shl 1) or (regA shr 7);
+              regF := (regF and (FLAG_S or FLAG_Z or FLAG_PV)) or (regA and (FLAG_C or FLAG_3 or FLAG_5));
+            end;
+         1: rrc_a();                                     // RRCA
+         2: rl_a();                                      // RLA
+         3: rr_a();                                      // RRA
+         4: daa();                                       // DAA
+         5: begin                                        // CPL
+              regA := not regA;
+              regF := (regF and (FLAG_S or FLAG_Z or FLAG_PV or FLAG_C)) or
+                      (regA and (FLAG_3 or FLAG_5)) or FLAG_H or FLAG_N;
+            end;
+         6: scf();                                       // SCF
+       else
+         begin                                           // CCF
+           v := regF and FLAG_C;
+           regF := (regF and (FLAG_S or FLAG_Z or FLAG_PV)) or (regA and (FLAG_3 or FLAG_5));
+           if v <> 0 then regF := regF or FLAG_H else regF := regF or FLAG_C;
+         end;
+       end;
+     end;
+  1: if (y = 6) and (z = 6) then
+     begin                                               // HALT
+       if TStates > 4 then dec(regPC);
+     end
+     else
+     begin                                               // LD r,r'
+       SetReg8(y, GetReg8(z));
+       if (y = 6) or (z = 6) then Result := 7;
+     end;
+  2: begin                                               // ALU A,r
+       Alu(y, GetReg8(z));
+       if z = 6 then Result := 7;
+     end;
+  else
+    case z of
+      0: if TestCC(y) then                               // RET cc
+         begin
+           regPC := popw();
+           Result := 11;
+         end
+         else
+           Result := 5;
+      1: if q = 0 then
+         begin                                           // POP rp2
+           w := popw();
+           case p of
+             0: SetBC(w);
+             1: regDE := w;
+             2: regHL := w;
+           else
+             begin regA := w shr 8; regF := w and $FF; end;
+           end;
+           Result := 10;
+         end
+         else
+           case p of
+             0: begin regPC := popw(); Result := 10; end; // RET
+             1: exx();                                    // EXX
+             2: regPC := regHL;                           // JP (HL)
+           else
+             begin regSP := regHL; Result := 6; end;      // LD SP,HL
+           end;
+      2: begin                                           // JP cc,nn
+           w := NextPCW();
+           if TestCC(y) then regPC := w;
+           Result := 10;
+         end;
+      3: case y of
+           0: begin regPC := NextPCW(); Result := 10; end; // JP nn
+           1: Result := execute_cb();                      // CB prefix
+           2: begin                                        // OUT (n),A
+                outb((regA shl 8) or Mem[regPC], regA);
+                inc(regPC);
+                Result := 11;
+              end;
+           3: begin                                        // IN A,(n)
+                inc(regPC);
+                regA := $FF;
+                Result := 11;
+              end;
+           4: begin                                        // EX (SP),HL
+                w := peekw(regSP);
+                pokew(regSP, regHL);
+                regHL := w;
+                Result := 19;
+              end;
+           5: begin                                        // EX DE,HL
+                w := regDE;
+                regDE := regHL;
+                regHL := w;
+              end;
+           6: bInterruptsEnabled := false;                 // DI
+         else
+           bInterruptsEnabled := true;                     // EI
+         end;
+      4: begin                                           // CALL cc,nn
+           w := NextPCW();
+           if TestCC(y) then
+           begin
+             pushw(regPC);
+             regPC := w;
+             Result := 17;
+           end
+           else
+             Result := 10;
+         end;
+      5: if q = 0 then
+         begin                                           // PUSH rp2
+           if p = 3 then pushw((regA shl 8) or regF) else pushw(GetRP(p));
+           Result := 11;
+         end
+         else if p = 0 then
+         begin                                           // CALL nn
+           w := NextPCW();
+           pushw(regPC);
+           regPC := w;
+           Result := 17;
+         end;
+         // DD, ED and FD are prefixes handled by Exec
+      6: begin                                           // ALU A,n
+           Alu(y, Mem[regPC]);
+           inc(regPC);
+           Result := 7;
+         end;
+    else
+      begin                                              // RST y*8
+        pushw(regPC);
+        regPC := y * 8;
+        Result := 11;
+      end;
+    end;
+  end;
+end;
+
+function TSpecEmu.ExecCB(op: byte): integer;
+var
+  y, z: byte;
+begin
+  y := (op shr 3) and 7;
+  z := op and 7;
+  case op shr 6 of
+    0: SetReg8(z, Rot(y, GetReg8(z)));                   // rotate/shift r
+    1: bit(1 shl y, GetReg8(z));                         // BIT y,r
+    2: SetReg8(z, bitRes(1 shl y, GetReg8(z)));          // RES y,r
+  else
+    SetReg8(z, bitSet(1 shl y, GetReg8(z)));             // SET y,r
+  end;
+  if z <> 6 then Result := 8
+  else if (op shr 6) = 1 then Result := 12
+  else Result := 15;
+end;
+
+function TSpecEmu.ExecED(op: byte): integer;
+var
+  y, z, p, q, v, c: byte;
+  w: Word;
+  iStep: integer;
+begin
+  y := (op shr 3) and 7;
+  z := op and 7;
+  p := y shr 1;
+  q := y and 1;
+  Result := 8;
+  if (op shr 6) = 1 then
+    case z of
+      0: begin                                           // IN r,(C)
+           c := regF and FLAG_C;
+           v := in_bc();
+           regF := regF or c;
+           if y <> 6 then SetReg8(y, v);
+           Result := 12;
+         end;
+      1: begin                                           // OUT (C),r
+           if y = 6 then v := 0 else v := GetReg8(y);
+           outb((regB shl 8) or regC, v);
+           Result := 12;
+         end;
+      2: begin
+           if q = 0 then regHL := sbc16(regHL, GetRP(p))  // SBC HL,rp
+           else regHL := adc16(regHL, GetRP(p));          // ADC HL,rp
+           Result := 15;
+         end;
+      3: begin
+           w := NextPCW();
+           if q = 0 then pokew(w, GetRP(p))               // LD (nn),rp
+           else SetRP(p, peekw(w));                       // LD rp,(nn)
+           Result := 20;
+         end;
+      4: neg_a();                                        // NEG
+      5: begin                                           // RETN / RETI
+           regPC := popw();
+           Result := 14;
+         end;
+      6: case y and 3 of                                 // IM 0/1/2
+           0, 1: regIM := 0;
+           2: regIM := 1;
+         else
+           regIM := 2;
+         end;
+    else
+      case y of
+        0: begin regI := regA; Result := 9; end;         // LD I,A
+        1: begin regR := regA; regRtemp := regA; Result := 9; end; // LD R,A
+        2, 3: begin                                      // LD A,I / LD A,R
+                if y = 2 then regA := regI
+                else regA := (regR and $80) or (regRtemp and $7F);
+                regF := (regF and FLAG_C) or (regA and (FLAG_S or FLAG_3 or FLAG_5));
+                if regA = 0 then regF := regF or FLAG_Z;
+                if bInterruptsEnabled then regF := regF or FLAG_PV;
+                Result := 9;
+              end;
+        4, 5: begin                                      // RRD / RLD
+                v := Mem[regHL];
+                if y = 4 then
+                begin
+                  Mem[regHL] := (regA shl 4) or (v shr 4);
+                  regA := (regA and $F0) or (v and $0F);
+                end
+                else
+                begin
+                  Mem[regHL] := (v shl 4) or (regA and $0F);
+                  regA := (regA and $F0) or (v shr 4);
+                end;
+                regF := (regF and FLAG_C) or (regA and (FLAG_S or FLAG_3 or FLAG_5)) or Parity[regA];
+                if regA = 0 then regF := regF or FLAG_Z;
+                Result := 18;
+              end;
+      end;
+    end
+  else if ((op shr 6) = 2) and (z <= 3) and (y >= 4) then
+  begin
+    // Block instructions: y = 4 increment, 5 decrement, 6/7 repeat
+    if (y and 1) = 0 then iStep := 1 else iStep := -1;
+    Result := 16;
+    case z of
+      0: begin                                           // LDI/LDD/LDIR/LDDR
+           Mem[regDE] := Mem[regHL];
+           regHL := Word(regHL + iStep);
+           regDE := Word(regDE + iStep);
+           SetBC(Word(((regB shl 8) or regC) - 1));
+           regF := regF and (FLAG_S or FLAG_Z or FLAG_C);
+           if ((regB shl 8) or regC) <> 0 then
+           begin
+             regF := regF or FLAG_PV;
+             if y >= 6 then begin dec(regPC, 2); Result := 21; end;
+           end;
+         end;
+      1: begin                                           // CPI/CPD/CPIR/CPDR
+           v := Mem[regHL];
+           w := Word(regA - v);
+           regHL := Word(regHL + iStep);
+           SetBC(Word(((regB shl 8) or regC) - 1));
+           regF := (regF and FLAG_C) or FLAG_N or (w and FLAG_S);
+           if (w and $FF) = 0 then regF := regF or FLAG_Z;
+           if (regA and $F) < (v and $F) then regF := regF or FLAG_H;
+           if ((regB shl 8) or regC) <> 0 then
+           begin
+             regF := regF or FLAG_PV;
+             if (y >= 6) and ((w and $FF) <> 0) then begin dec(regPC, 2); Result := 21; end;
+           end;
+         end;
+    else
+      begin                                              // INI/IND/OUTI/OUTD and repeats
+        if z = 2 then
+          Mem[regHL] := $FF
+        else
+        begin
+          dec(regB);
+          outb((regB shl 8) or regC, Mem[regHL]);
+          inc(regB);
         end;
+        dec(regB);
+        regHL := Word(regHL + iStep);
+        regF := (regF and FLAG_C) or FLAG_N or (regB and (FLAG_S or FLAG_3 or FLAG_5));
+        if regB = 0 then regF := regF or FLAG_Z
+        else if y >= 6 then begin dec(regPC, 2); Result := 21; end;
+      end;
+    end;
+  end;
+  // Anything else is an invalid ED opcode, which acts as an 8 T-state NOP
+end;
+
+// IXH/IXL (or IYH/IYL) replace H and L in DD/FD prefixed instructions
+function TSpecEmu.GetIdx8(i: byte): byte;
+begin
+  case i of
+    4: Result := regID shr 8;
+    5: Result := regID and $FF;
+  else
+    Result := GetReg8(i);
+  end;
+end;
+
+procedure TSpecEmu.SetIdx8(i, v: byte);
+begin
+  case i of
+    4: regID := (regID and $FF) or (v shl 8);
+    5: regID := (regID and $FF00) or v;
+  else
+    SetReg8(i, v);
+  end;
+end;
+
+function TSpecEmu.ExecIndexed(op: byte): integer;
+var
+  y, z, p, q: byte;
+  w, adr: Word;
+begin
+  y := (op shr 3) and 7;
+  z := op and 7;
+  p := y shr 1;
+  q := y and 1;
+
+  // A prefix after a prefix: the first one acts as a NOP
+  if (op = $DD) or (op = $ED) or (op = $FD) then
+  begin
+    dec(regPC);
+    Result := 4;
+    exit;
+  end;
+
+  case op shr 6 of
+  0: if (z = 1) and (p = 2) and (q = 0) then
+     begin
+       regID := NextPCW();                               // LD IX,nn
+       Result := 14;
+     end
+     else if (z = 1) and (q = 1) then
+     begin
+       if p = 2 then w := regID else w := GetRP(p);      // ADD IX,rp
+       regID := add16(regID, w);
+       Result := 15;
+     end
+     else if (z = 2) and (p = 2) then
+     begin
+       w := NextPCW();
+       if q = 0 then pokew(w, regID)                     // LD (nn),IX
+       else regID := peekw(w);                           // LD IX,(nn)
+       Result := 20;
+     end
+     else if (z = 3) and (p = 2) then
+     begin
+       if q = 0 then regID := Word(regID + 1)            // INC IX / DEC IX
+       else regID := Word(regID - 1);
+       Result := 10;
+     end
+     else if (z in [4, 5, 6]) and (y = 6) then
+     begin
+       adr := Word(regID + ShortInt(Mem[regPC]));
+       inc(regPC);
+       case z of
+         4: Mem[adr] := inc8(Mem[adr]);                  // INC (IX+d)
+         5: Mem[adr] := dec8(Mem[adr]);                  // DEC (IX+d)
+       else
+         begin                                           // LD (IX+d),n
+           Mem[adr] := Mem[regPC];
+           inc(regPC);
+         end;
+       end;
+       if z = 6 then Result := 19 else Result := 23;
+     end
+     else if (z in [4, 5, 6]) and (y in [4, 5]) then
+     begin
+       case z of
+         4: SetIdx8(y, inc8(GetIdx8(y)));                // INC IXH/IXL
+         5: SetIdx8(y, dec8(GetIdx8(y)));                // DEC IXH/IXL
+       else
+         begin                                           // LD IXH/IXL,n
+           SetIdx8(y, Mem[regPC]);
+           inc(regPC);
+         end;
+       end;
+       if z = 6 then Result := 11 else Result := 8;
+     end
+     else
+       Result := ExecBase(op) + 4;
+  1: if (y = 6) and (z = 6) then
+       Result := ExecBase(op) + 4                        // HALT
+     else if (y = 6) or (z = 6) then
+     begin                                               // LD (IX+d),r / LD r,(IX+d)
+       adr := Word(regID + ShortInt(Mem[regPC]));
+       inc(regPC);
+       if y = 6 then Mem[adr] := GetReg8(z) else SetReg8(y, Mem[adr]);
+       Result := 19;
+     end
+     else if (y in [4, 5]) or (z in [4, 5]) then
+     begin                                               // LD with IXH/IXL
+       SetIdx8(y, GetIdx8(z));
+       Result := 8;
+     end
+     else
+       Result := ExecBase(op) + 4;
+  2: if z = 6 then
+     begin                                               // ALU A,(IX+d)
+       adr := Word(regID + ShortInt(Mem[regPC]));
+       inc(regPC);
+       Alu(y, Mem[adr]);
+       Result := 19;
+     end
+     else if z in [4, 5] then
+     begin                                               // ALU A,IXH/IXL
+       Alu(y, GetIdx8(z));
+       Result := 8;
+     end
+     else
+       Result := ExecBase(op) + 4;
+  else
+    case op of
+      $E1: begin regID := popw(); Result := 14; end;     // POP IX
+      $E3: begin                                         // EX (SP),IX
+             w := peekw(regSP);
+             pokew(regSP, regID);
+             regID := w;
+             Result := 23;
+           end;
+      $E5: begin pushw(regID); Result := 15; end;        // PUSH IX
+      $E9: begin regPC := regID; Result := 8; end;       // JP (IX)
+      $F9: begin regSP := regID; Result := 10; end;      // LD SP,IX
+    else
+      Result := ExecBase(op) + 4;
+    end;
+  end;
+end;
+
+// Register operand of a CB opcode: B, C, D, E, H, L, (HL), A
+function TSpecEmu.GetReg8(i: byte): byte;
+begin
+  case i of
+    0: Result := regB;
+    1: Result := regC;
+    2: Result := regDE shr 8;
+    3: Result := regDE and $FF;
+    4: Result := regHL shr 8;
+    5: Result := regHL and $FF;
+    6: Result := Mem[regHL];
+  else
+    Result := regA;
+  end;
+end;
+
+procedure TSpecEmu.SetReg8(i, val: byte);
+begin
+  case i of
+    0: regB := val;
+    1: regC := val;
+    2: regDE := (regDE and $FF) or (val shl 8);
+    3: regDE := (regDE and $FF00) or val;
+    4: regHL := (regHL and $FF) or (val shl 8);
+    5: regHL := (regHL and $FF00) or val;
+    6: Mem[regHL] := val;
+  else
+    regA := val;
   end;
 end;
 
 procedure TSpecEmu.execute_id_cb(op: byte; adr: Word);
 begin
   case op of
+    64,65,66,67,68,69,70,71: begin           // BIT 0,ID+d
+      bit($1,Mem[adr]);
+    end;
+    72,73,74,75,76,77,78,79: begin           // BIT 1,ID+d
+      bit($2,Mem[adr]);
+    end;
+    80,81,82,83,84,85,86,87: begin           // BIT 2,ID+d
+      bit($4,Mem[adr]);
+    end;
     88,89,90,91,92,93,94,95: begin           // BIT 3,ID+d
       bit($8,Mem[adr]);
     end;
@@ -2598,21 +3299,17 @@ begin
     120,121,122,123,124,125,126,127: begin   // BIT 7,ID+d
       bit($80,Mem[adr]);
     end;
-    174: begin                               // RES 5,(HL)
-      Mem[adr] := bitRes($20,Mem[adr]);
+    128..191: begin                          // RES b,(ID + d)
+      Mem[adr] := bitRes(1 shl ((op shr 3) and 7),Mem[adr]);
     end;
-    182: begin                               // RES 6,(HL)
-      Mem[adr] := bitRes($40,Mem[adr]);
+    192..255: begin                          // SET b,(ID + d)
+      Mem[adr] := bitSet(1 shl ((op shr 3) and 7),Mem[adr]);
     end;
-    190: begin                               // RES 7,(HL)
-      Mem[adr] := bitRes($80,Mem[adr]);
+  else
+    begin                                    // rotate/shift (ID + d)
+      Mem[adr] := Rot((op shr 3) and 7, Mem[adr]);
+      if (op and 7) <> 6 then SetReg8(op and 7, Mem[adr]);  // undocumented copy
     end;
-    222: begin                               // SET 3,(ID + d)
-      Mem[adr] := bitSet($08, Mem[adr]);
-    end;
-  else begin
-         DisplayEmuError('Unhandled ID_CB instruction: ID CB ',op,regPC-4);
-       end;
   end;
 end;
 
@@ -4559,47 +5256,25 @@ end;
 
 function TSpecEmu.LoadRMBSong(Song: TSTSong; iStartPos: integer): integer;
 var
-  iMemPtr, iMaxInst, i, iPat: integer;
+  iMemPtr, i, iPat, iTempo: integer;
   iPATT_ADDR: array [0..255] of Word;
   iSongStartAddr: integer;
 begin
-  // Load a single pattern of song data for the Phaser1 engine to play
+  // Same layout as LoadRMBPattern, for the whole song: loop start * 2,
+  // song length * 2, the pattern address table, then each used pattern
+  // (tempo byte, CH1/CH2 note pairs, 0 to end it)
   iMemPtr := $8700;
 
   // Point the instance of MUSICDATA at the start of the data
   Mem[$8001] := iMemPtr and $FF;   Mem[$8002] := iMemPtr shr 8;
 
-  iMaxInst := Song.GetHighestInstrument();
-  if (iMaxInst < 0) then
-  begin
-    Song.Pattern[Song.SongLayout[0]].Sustain[2][1] := 0;
-    iMaxInst := 0;
-  end;
-
-  // Set PATTERN_LOOP_BEGIN and PATTERN_LOOP_END in song data
-  Mem[iMemPtr] := Song.LoopStart * 2;;
-  inc(iMemPtr);
-  Mem[iMemPtr] := Song.SongLength * 2;;
-  inc(iMemPtr);
-
-  Mem[iMemPtr] := ((iMaxInst+1) * 4) and $FF;
-  Mem[iMemPtr+1] := ((iMaxInst+1) * 4) shr 8; // Size of instrument table
+  Mem[iMemPtr] := Song.LoopStart * 2;
+  Mem[iMemPtr+1] := Song.SongLength * 2;
   inc(iMemPtr,2);
-  // INSTRUMENT TABLE
-  for i := 0 to iMaxInst do
-  begin
-    Mem[iMemPtr] := Song.Phaser1Instrument[i].Multiple;
-    Mem[iMemPtr+1] := Song.Phaser1Instrument[i].Detune and $FF;
-    Mem[iMemPtr+2] := Song.Phaser1Instrument[i].Detune shr 8;
-    Mem[iMemPtr+3] := Song.Phaser1Instrument[i].Phase;
-    inc(iMemPtr,4)
-  end;
 
-  // Reserve space for the sound layout (2 bytes per
   iSongStartAddr := iMemPtr;
   inc(iMemPtr,Song.SongLength * 2);
 
-  // Add data for all used patterns
   for iPat := 0 to 255 do
   begin
     if not (Song.IsPatternUsed(iPat)) then
@@ -4607,26 +5282,28 @@ begin
     else
     begin
       iPATT_ADDR[iPat] := iMemPtr;
-      P1DAddPatternData(Song.Pattern[iPat],iMemPtr);
+      iTempo := 17 - Song.Pattern[iPat].Tempo;
+      if iTempo < 1 then iTempo := 1;
+      Mem[iMemPtr] := iTempo;
+      inc(iMemPtr);
+      for i := 1 to Song.Pattern[iPat].Length do
+        RMBAddNoteData(iMemPtr, Song.Pattern[iPat].Chan[1][i], Song.Pattern[iPat].Chan[2][i]);
+      Mem[iMemPtr] := $00; // Pattern end marker
+      inc(iMemPtr);
     end;
   end;
 
-  // Add pattern layout at the SONGSTART address
   for i := 0 to Song.SongLength - 1 do
   begin
     Mem[iSongStartAddr+i*2] := iPATT_ADDR[Song.SongLayout[i]] and $FF;
     Mem[iSongStartAddr+i*2+1] := iPATT_ADDR[Song.SongLayout[i]] shr 8;
   end;
 
-  // Set PATTER_PTR and NOTE_PTR IN CODE
-  Mem[$8251] := iStartPos * 2;
-  Mem[$8252] := 0;   Mem[$8253] := 0;
-  // Nop out the code at the start of the player that initialises PATTERN_PTR
-  // and NOTE_PTR to zero...
-  Mem[$801C] := 0; Mem[$801D] := 0; Mem[$801E] := 0; Mem[$801F] := 0;
-  Mem[$8020] := 0; Mem[$8021] := 0; Mem[$8022] := 0; Mem[$8023] := 0;
+  // The player starts with LD A,$FE / LD (PATTERN_PTR),A and adds 2 before
+  // reading the first pattern, so start one entry before iStartPos
+  Mem[$8014] := (iStartPos * 2 - 2) and $FF;
 
-  Result := iMemPtr - $8000;
+  Result := iMemPtr - $8700;
 end;
 
 

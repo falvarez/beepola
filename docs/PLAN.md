@@ -57,12 +57,13 @@ Nota: el código fuente es v1.06.02+trunk; el `.exe` incluido es v1.08.01. Se co
 4. Compilar a `.tap`/`.asm` desde el diálogo Compile y comparar el binario con el generado por `Beepola.exe` original (si se dispone de Wine/Windows) o al menos cargarlo en un emulador (Fuse) y verificar que suena.
 5. Guardar opciones y MRU, reiniciar app → persisten en el `.ini`.
 
-## Emulador Z80: limitaciones conocidas (RMB y PLP)
-El emulador de `SpecEmu.pas` solo implementa las instrucciones Z80 que usan los motores SFX, TMB, MSD, P1D, P1S y SVG. Esto ya era así en el código original (1.06.02): no es un efecto del port.
-- **RMB**: su reproductor usa instrucciones que faltan, así que al reproducir aparece «An emulation error has occurred». La primera que falla es `BIT 0,(IX+d)`; luego vendrían `RES b,(IX+d)`, `RES 2,(HL)`, `AND B`, etc. Compilar a `.tap`/`.asm` con RMB sí funciona, porque no pasa por el emulador.
-- **PLP**: no hay imagen del reproductor (`plp_img` no está en `BeepolaData.rc`) ni cargador de patrones en el emulador; al reproducir suena silencio. También compila bien.
+## Emulador Z80 y motores RMB/PLP
+El emulador de `SpecEmu.pas` del código original (1.06.02) solo implementaba las instrucciones que usan SFX, TMB, MSD, P1D, P1S y SVG. Ahora está completo:
+- Cada tabla (sin prefijo, `CB`, `ED`, `DD`/`FD`, `DD CB`/`FD CB`) conserva sus casos escritos a mano y, en la rama `else`, decodifica el resto por campos de bits (x/y/z) con los T-states documentados (`ExecBase`, `ExecCB`, `ExecED`, `ExecIndexed`).
+- Pasa las 67 pruebas de `zexdoc` (`tests/run_zexdoc.sh zexdoc.com`; el `.com` no está en el repo). Por el camino se corrigieron errores del código original: flag S en `ADD A`, flag H en `ADC HL`, `FLAG_NOT_PV` (`$251` → `$FB`), `LD H,B`, `LD H,C`, `CCF` y `RL L`.
+- Regresión: el audio de SFX, TMB, MSD, P1D, P1S, SVG y la música del About es idéntico byte a byte antes y después (`tests/render.pas`).
+- `TSpecEmu` gana accesores para pruebas: `Memory[]`, `Register_A/C/DE` y `ROMProtected`.
 
-Trabajo ya hecho, sin integrar: [`docs/patches/z80-bit-res-set.diff`](patches/z80-bit-res-set.diff) completa en `SpecEmu.pas` los grupos `BIT/RES/SET b,r` del prefijo `CB` (funciones `GetReg8`/`SetReg8`) y `BIT/RES/SET b,(IX/IY+d)` del prefijo `DD/FD CB`. Se aplica con `git apply docs/patches/z80-bit-res-set.diff` y compila. Con él, RMB avanza hasta la siguiente instrucción que falta (`AND B`, opcode `$A0`, sin prefijo). Quedan sin implementar unas 45 instrucciones sin prefijo, buena parte de `CB`/`ED` y de las indexadas.
+**RMB** suena: su imagen (`rmb.img`) es idéntica a la de la 1.08.01 y usa la ROM del Spectrum (calculadora y `BEEPER`), que necesitaba el Z80 completo. `LoadRMBSong` era una copia sin adaptar del cargador de Phaser1; ahora usa el mismo formato que `LoadRMBPattern`. Exportar a WAV y la preselección del diálogo Compile ya incluyen RMB.
 
-Cómo probarlo: `keytest -play 6` (programa de prueba del scratchpad) o, en la app, elegir ROM Beep y reproducir; la comprobación de referencia sería la salida WAV del `.exe` 1.08.01.
-
+**PLP** sigue sin sonar. En este código es un prototipo: el ensamblador de `PLP_Engine.pas` no ensambla (errata `AF,AD'`, etiquetas `PAGE`/`KEYCHECK`/`TITLE`/`TIMER_INT` sin definir, sin inicialización de `PATTERNDATA1/2`) y `PLP_AddSongData` toma la lista de patrones de una canción vacía. El PLP terminado de la 1.08.01 es otro motor (melodía en diente de sierra con *pitch bend*, percusión y un formato de datos con comandos); su imagen está en el recurso `PLP_IMG` del `.exe` 1.08.01 (cargaría los datos en `$8700`, como RMB), pero portarlo supone reconstruir formato, cargador, interfaz (columna PBend) y compilador. **Stocker** (`STK`) es solo una entrada de menú: no hay reproductor en ninguna versión.

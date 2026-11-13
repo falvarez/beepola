@@ -13,3 +13,4 @@ link*.res
 linkfiles*.res
 ppaslink.sh
 symbol_order*.fpc
+tests/lib/

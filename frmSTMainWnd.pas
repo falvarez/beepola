@@ -2296,6 +2296,8 @@ begin
     CompileDlg.cboEngine.ItemIndex := 4
   else if Song.PreferredEngine = 'SVG' then
     CompileDlg.cboEngine.ItemIndex := 5
+  else if Song.PreferredEngine = 'RMB' then
+    CompileDlg.cboEngine.ItemIndex := 6
   else
     CompileDlg.cboEngine.ItemIndex := 0;
 
