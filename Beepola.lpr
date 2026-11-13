@@ -42,9 +42,15 @@ uses
   SongRipper in 'SongRipper.pas',
   frmSongRipper in 'frmSongRipper.pas' {SongRipperDlg},
   RMB_Engine in 'RMB_Engine.pas',
-  PLP_Engine in 'PLP_Engine.pas';
+  PLP_Engine in 'PLP_Engine.pas'{$IFDEF DARWIN},
+  MacLayout in 'MacLayout.pas'{$ENDIF};
 
 // BeepolaData.res se enlaza desde frmSTMainWnd.pas
+
+{$IFDEF DARWIN}
+var
+  i: integer;
+{$ENDIF}
 
 begin
   Application.Initialize;
@@ -64,5 +70,9 @@ begin
   Application.CreateForm(TAdjustSongTempoDlg, AdjustSongTempoDlg);
   Application.CreateForm(TOptionsDlg, OptionsDlg);
   Application.CreateForm(TSongRipperDlg, SongRipperDlg);
+{$IFDEF DARWIN}
+  for i := 0 to Screen.FormCount - 1 do
+    FixVCLLayout(Screen.Forms[i]);
+{$ENDIF}
   Application.Run;
 end.
