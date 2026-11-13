@@ -29,8 +29,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] `GrokUtils.pas`: `Sto_GetFileSize` con `FileSize` de FPC; `GetAppVersionInfo` devuelve una constante.
   Verificación: `fpc -Mdelphi GrokUtils.pas` compila; un programa de prueba en el scratchpad imprime el tamaño correcto de `z80.tab` (14096).
   Hecho: bajo `{$IFDEF FPC}`, `FindFirst`/`TSearchRec.Size` de `SysUtils` (Int64, sin depender de LazUtils) y versión `'1.06.02'`; el código Windows se conserva en `{$ELSE}`.
-- [ ] Comprobar que `TResourceStream` lee `BeepolaData.RES` en Darwin.
+- [x] Comprobar que `TResourceStream` lee `BeepolaData.RES` en Darwin.
   Verificación: un programa de prueba con `{$R BeepolaData.res}` carga `z80_tab` (14096 bytes) y `sfx_img` (65536 bytes).
+  Hecho: FPC enlaza el `.RES` de Windows en Mach-O; los 9 recursos cargan con su tamaño y su contenido es idéntico (`cmp`) a los ficheros fuente. No hay que cambiar el `.RES`.
 
 ## 4. Audio
 
