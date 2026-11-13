@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 LAZBUILD=${LAZBUILD:-$HOME/opt/lazarus/lazbuild}
 VERSION=1.06.02
 APP=Beepola.app
-HELP_SRC=Beepola_v1.08.01/help
+HELP_SRC=help
 
 "$LAZBUILD" Beepola.lpi
 

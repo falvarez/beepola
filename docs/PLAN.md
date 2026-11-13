@@ -10,7 +10,7 @@ Beepola es una app **Delphi 2007 (VCL, Win32, strings ANSI)**. Para macOS la rut
 | `PostMessage(WM_USER_*)` desde el hilo reproductor | `PlayerThread.pas` → `WM_NewPattern/PatternTick/SongEnd` | `TThread.Queue` llamando a métodos del form |
 | Registro (`TRegistry`) | `RegSettings.pas`, `MRUList.pas` | `TIniFile` en `GetAppConfigDir` (~/Library/Preferences/…) |
 | `FindFirstFile`, `GetFileVersionInfo` | `GrokUtils.pas` | `FileUtil.FileSize`; versión como constante |
-| `ShellExecute(iexplore…)` | `frmSTMainWnd.pas:2421` | `OpenURL`/`OpenDocument` a la ayuda local empaquetada (`Beepola_v1.08.01/help`) |
+| `ShellExecute(iexplore…)` | `frmSTMainWnd.pas:2421` | `OpenURL`/`OpenDocument` a la ayuda local empaquetada (`help/`, copiada de la 1.08.01) |
 | `TJvFilenameEdit` (JVCL) | un `.dfm` | `TFileNameEdit` (unidad `EditBtn`) |
 | `.dfm` VCL | 15 formularios (texto) | `.lfm` limpiados de propiedades VCL no soportadas |
 | Recursos `BeepolaData.RES` (`z80.tab`, `*.img`) vía `TResourceStream` | `Assemb.pas`, `SpecEmu.LoadImage` | Se mantiene: FPC enlaza `.res` en Mach-O; `{$R BeepolaData.res}` |
