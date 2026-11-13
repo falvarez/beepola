@@ -75,12 +75,16 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Arrancar la app y corregir los errores de carga de los `.lfm` (propiedades desconocidas, etc.).
   Verificación: `./Beepola` (o `open Beepola.app`) muestra la ventana principal sin excepciones; abrir cada diálogo del menú no lanza errores.
   Hecho sin cambios de código: `./Beepola` abre la ventana principal (875×560) sin diálogos de error, con los 15 formularios creados al arrancar. Un programa de prueba (scratchpad `formtest`) crea los mismos formularios y hace `Show`/`Hide` de los 14 diálogos (se ejecutan sus `OnShow`, incluido el ensamblado de todos los motores en SongInfo y la música del About): 0 excepciones. Falta la revisión visual (sección 8).
-- [ ] Tocar notas con el teclado en el editor de patrones.
+- [x] Tocar notas con el teclado en el editor de patrones.
   Verificación: suena cada nota y la octava cambia correctamente.
+  Hecho: el usuario lo probó a mano en la app y suenan las notas. La prueba automática con pulsaciones de System Events necesita permiso de Accesibilidad para `osascript` (pendiente). Al arrancar, el foco queda en `txtOctave` (primer control en el orden de tabulación, probablemente igual que en la VCL). Las teclas de octava del teclado numérico se tratan en 8.1.
 - [ ] Reproducir patrón y canción con cada motor (SFX, TMB, MSD, P1D, P1S, SVG, RMB, PLP).
   Verificación: el audio va a tempo, el resaltado de fila avanza y Stop corta limpio, sin bloqueos.
-- [ ] Probar los botones de test de instrumento Phaser1 y de ornamento Savage.
+  Programa de prueba `keytest -play` (3 s de patrón y 3 s de canción por motor): SFX, TMB, MSD, P1D, P1S y SVG suenan, el resaltado avanza (16 filas en el patrón, 16–24 cambios de fila en la canción), sin underruns durante la reproducción, y Stop vuelve en unos 220 ms (el `Sleep(210)` original de `TPlayerThread`), con la fila restaurada. Corregido por el camino: el diálogo de error del emulador se abría desde el hilo de reproducción y Cocoa abortaba la app (ahora va por `TThread.Synchronize`), y `LoadFile`/`SaveFile` liberaban un stream sin inicializar si el fichero no se podía abrir.
+  BLOQUEADA (limitación del código original, no del port): PLP no tiene imagen ni cargador en el emulador de la 1.06.02 (suena silencio) y RMB usa instrucciones Z80 que el emulador no implementa (`BIT/RES/SET` sobre `(IX+d)`, `RES b,(HL)`, `AND B`…). Hay que decidir si se completa el emulador Z80.
+- [x] Probar los botones de test de instrumento Phaser1 y de ornamento Savage.
   Verificación: suenan y devuelven el control a la UI.
+  Hecho: el test de Phaser1 vuelve en 0,7 s y el de ornamento Savage en 0,5 s, los dos con sonido y sin excepciones (`keytest -play`); el usuario también los probó a mano.
 
 ## 8. Adaptaciones Mac
 
