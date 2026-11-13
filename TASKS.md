@@ -9,9 +9,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 - [x] Descargar el código fuente estable de Lazarus en `~/opt/lazarus` y compilar `lazbuild` (`make lazbuild`).
   Verificación: `~/opt/lazarus/lazbuild --version` imprime la versión.
   Hecho: tag `lazarus_4_8`, `make lazbuild LCL_PLATFORM=cocoa`; enlaza sin `-k-ld_classic`.
-- [ ] Compilar un "hola mundo" LCL/Cocoa de prueba (un form con un botón) en el scratchpad con `lazbuild --ws=cocoa`.
+- [x] Compilar un "hola mundo" LCL/Cocoa de prueba (un form con un botón) en el scratchpad con `lazbuild --ws=cocoa`.
   Verificación: el binario arranca y muestra la ventana. Si el enlazado falla, probar `-k-ld_classic` y anotar el flag necesario en `docs/PLAN.md`.
-  BLOQUEADA: con FPC 3.2.2 (brew) el enlazado falla con el `ld` actual (ld-27106): `malformed method list atom 'ltmp5' (cocoawsextctrls.o), fixups found beyond the number of method entries`; `-k-ld_classic` ya no funciona (`-ld_classic is no longer supported and will be ignored`). Solución prevista en el plan: compilar FPC 3.2.4 (tag `release_3_2_4`) desde fuente en `~/opt/fpc` con el de brew como bootstrap, recompilar `lazbuild`/LCL con él y reintentar. Pendiente de autorizar la descarga y compilación.
+  Hecho: con FPC 3.2.2 el enlazado fallaba (`malformed method list atom … cocoawsextctrls.o`) y `-k-ld_classic` ya no existe. Se compiló FPC 3.2.4 (`release_3_2_4`) en `~/opt/fpc` (`make all OPT="-XR$SDK -Fl$SDK/usr/lib"`, `make install PREFIX=~/opt/fpc`, `fpc.cfg` en `~/opt/fpc/etc` generado con `samplecfg` + rutas del SDK), se recompiló `lazbuild` con él y `~/.lazarus/environmentoptions.xml` apunta a `~/opt/fpc/bin/fpc`. El hola mundo enlaza sin flags extra y muestra su ventana.
 
 ## 2. Esqueleto del proyecto
 
