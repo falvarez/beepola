@@ -7,6 +7,10 @@ uses Classes;
 function Sto_GetFileSize(const FileName: String): Int64;
 procedure GetAppVersionInfo(var sInfo: string);
 function StreamGetString(F: TStream; out bEOF: boolean): string;
+{$IFDEF FPC}
+// Ini file that replaces the Windows registry keys
+function SettingsFileName: string;
+{$ENDIF}
 
 implementation
 
@@ -79,6 +83,17 @@ begin
   end
   else
     sInfo := '0.0.0.0000';
+end;
+{$ENDIF}
+
+{$IFDEF FPC}
+function SettingsFileName: string;
+var
+  sDir: string;
+begin
+  sDir := GetAppConfigDir(False);
+  ForceDirectories(sDir);
+  Result := IncludeTrailingPathDelimiter(sDir) + 'beepola.ini';
 end;
 {$ENDIF}
 

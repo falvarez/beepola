@@ -23,8 +23,13 @@ implementation
 
 { TRegSettings }
 
+{$IFDEF FPC}
+uses IniFiles, SysUtils, GrokUtils;
+{$ELSE}
 uses Registry, Windows, SysUtils;
+{$ENDIF}
 
+{$IFNDEF FPC}
 
 function RegGetInt(Reg: TRegistry; sKey: string; iDefault: integer): integer;
 begin
@@ -62,6 +67,7 @@ begin
   end;
   if (Result = '') then Result := sDefault;
 end;
+{$ENDIF}
 
 constructor TRegSettings.Create;
 begin
@@ -70,6 +76,37 @@ begin
   LoadSettings();
 end;
 
+{$IFDEF FPC}
+procedure TRegSettings.LoadSettings;
+var
+  Ini: TIniFile;
+begin
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    FSongLayoutColNumbers := Ini.ReadBool('Options','ShowLayoutColNumbers',false);
+    FPatternRowHex := Ini.ReadBool('Options','PatternRowHex',false);
+  finally
+    Ini.Free;
+  end;
+  bDirty := false;
+end;
+
+procedure TRegSettings.SaveSettings;
+var
+  Ini: TIniFile;
+begin
+  if not bDirty then exit;
+
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteBool('Options','ShowLayoutColNumbers',FSongLayoutColNumbers);
+    Ini.WriteBool('Options','PatternRowHex',FPatternRowHex);
+  finally
+    Ini.Free;
+  end;
+  bDirty := false;
+end;
+{$ELSE}
 procedure TRegSettings.LoadSettings;
 var
   Reg: TRegistry;
@@ -119,6 +156,7 @@ begin
   FreeAndNil(Reg);
   bDirty := false;
 end;
+{$ENDIF}
 
 procedure TRegSettings.SetPatternRowHex(const Value: boolean);
 begin

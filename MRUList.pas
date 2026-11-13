@@ -26,8 +26,13 @@ implementation
 
 { TMRUList }
 
+{$IFDEF FPC}
+uses SysUtils, IniFiles, GrokUtils;
+{$ELSE}
 uses SysUtils, Registry, Windows;
+{$ENDIF}
 
+{$IFNDEF FPC}
 function RegGetInt(Reg: TRegistry; sKey: string; iDefault: integer): integer;
 begin
   try
@@ -64,6 +69,7 @@ begin
   end;
   if (Result = '') then Result := sDefault;
 end;
+{$ENDIF}
 
 function TMRUList.GetItemIndex(s: string): integer;
 var
@@ -89,6 +95,46 @@ begin
   SetLength(FItems,FSize);
 end;
 
+{$IFDEF FPC}
+function TMRUList.Store: integer;
+var
+  Ini: TIniFile;
+  i: Integer;
+begin
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteInteger('MRU','Count',FSize);
+    for i := 0 to FSize - 1 do
+      Ini.WriteString('MRU',IntToStr(i),FItems[i]);
+  finally
+    Ini.Free;
+  end;
+
+  Result := FSize;
+end;
+
+function TMRUList.Load: integer;
+var
+  Ini: TIniFile;
+  i, iCount: Integer;
+begin
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    iCount := Ini.ReadInteger('MRU','Count',0);
+    for i := 0 to FSize-1 do
+    begin
+      if i < iCount then
+        FItems[i] := Ini.ReadString('MRU',IntToStr(i),'')
+      else
+        FItems[i] := '';
+    end;
+  finally
+    Ini.Free;
+  end;
+
+  Result := FSize;
+end;
+{$ELSE}
 function TMRUList.Store: integer;
 var
   Reg: TRegistry;
@@ -146,6 +192,7 @@ begin
   Result := FSize;
   FreeAndNil(Reg);
 end;
+{$ENDIF}
 
 function TMRUList.AddFile(sName: string): integer;
 var
