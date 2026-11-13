@@ -23,8 +23,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 3. Núcleo sin interfaz gráfica
 
-- [ ] Hacer que compilen las unidades puras: `AsmTypes`, `AsmUtils`, `AsmPass1`, `AsmPass2`, `Assemb`, `STPatterns`, `STInstruments`, `STSong`, `*_Engine.pas`.
+- [x] Hacer que compilen las unidades puras: `AsmTypes`, `AsmUtils`, `AsmPass1`, `AsmPass2`, `Assemb`, `STPatterns`, `STInstruments`, `STSong`, `*_Engine.pas`.
   Verificación: `fpc -Mdelphi -Fu. <unidad>.pas` compila cada unidad sin errores.
+  Hecho: compilan las 16 sin errores ni avisos en cuanto `GrokUtils` dejó de usar `Windows`; no hizo falta tocarlas.
 - [x] `GrokUtils.pas`: `Sto_GetFileSize` con `FileSize` de FPC; `GetAppVersionInfo` devuelve una constante.
   Verificación: `fpc -Mdelphi GrokUtils.pas` compila; un programa de prueba en el scratchpad imprime el tamaño correcto de `z80.tab` (14096).
   Hecho: bajo `{$IFDEF FPC}`, `FindFirst`/`TSearchRec.Size` de `SysUtils` (Int64, sin depender de LazUtils) y versión `'1.06.02'`; el código Windows se conserva en `{$ELSE}`.
