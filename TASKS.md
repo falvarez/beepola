@@ -72,8 +72,9 @@ Plan completo en [docs/PLAN.md](docs/PLAN.md). Tareas en orden de ejecución; ca
 
 ## 7. Primera ejecución
 
-- [ ] Arrancar la app y corregir los errores de carga de los `.lfm` (propiedades desconocidas, etc.).
+- [x] Arrancar la app y corregir los errores de carga de los `.lfm` (propiedades desconocidas, etc.).
   Verificación: `./Beepola` (o `open Beepola.app`) muestra la ventana principal sin excepciones; abrir cada diálogo del menú no lanza errores.
+  Hecho sin cambios de código: `./Beepola` abre la ventana principal (875×560) sin diálogos de error, con los 15 formularios creados al arrancar. Un programa de prueba (scratchpad `formtest`) crea los mismos formularios y hace `Show`/`Hide` de los 14 diálogos (se ejecutan sus `OnShow`, incluido el ensamblado de todos los motores en SongInfo y la música del About): 0 excepciones. Falta la revisión visual (sección 8).
 - [ ] Tocar notas con el teclado en el editor de patrones.
   Verificación: suena cada nota y la octava cambia correctamente.
 - [ ] Reproducir patrón y canción con cada motor (SFX, TMB, MSD, P1D, P1S, SVG, RMB, PLP).
