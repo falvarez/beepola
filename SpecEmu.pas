@@ -2,7 +2,7 @@ unit SpecEmu;
 
 interface
 
-uses MMSystem, STSong, STPatterns, Classes;
+uses {$IFNDEF FPC}MMSystem, {$ENDIF}STSong, STPatterns, Classes;
 
 type
   TNewPatternFunc = procedure() of object;
@@ -50,12 +50,16 @@ type
     cBeeperVal: byte;
     cWaveBuf: array [0..70000] of byte; // 69888 Ts per WaveOut
     iWavePtr: integer;
+{$IFDEF FPC}
+    iNextIntTime: QWord;
+{$ELSE}
     iLastIntTime: cardinal;
     iLast5IntTime: int64;
     WavHdr: array [0..10] of TWaveHdr;
     iBufNum: integer;
     ghMem: array [0..10] of cardinal;
     gpMem: array [0..10] of Pointer;
+{$ENDIF}
     procedure SetBC(nn: Word);
     function NextPCW: Word;
     procedure exx;
@@ -184,7 +188,7 @@ implementation
 
 { TSpecEmu }
 
-uses Math, SysUtils, Dialogs, Windows, GrokUtils, Forms;
+uses Math, SysUtils, Dialogs, {$IFDEF FPC}BeeperAudio, LCLType{$ELSE}Windows{$ENDIF}, GrokUtils, Forms;
 
 procedure TSpecEmu.InitParityTable();
 var
@@ -204,11 +208,13 @@ end;
 
 constructor TSpecEmu.Create(hWaveOutIn: System.Cardinal);
 begin
+{$IFNDEF FPC}
   if not QueryPerformanceFrequency(iPerfFreq) then
   begin
     iPerfFreq := 1000;
     ShowMessage('No high res timer available on this PC');
   end;
+{$ENDIF}
   // Initialize Spectrum
   regA := 0; regF := 0; regHL := 0; regPC := 0; regSP := 0;
   regI := 0; regR := 0; regIM := 0; regRtemp := 0;
@@ -230,12 +236,14 @@ destructor TSpecEmu.Destroy;
 var
   i: Integer;
 begin
+{$IFNDEF FPC}
   for i := 0 to 10 do
   begin
     waveOutUnprepareHeader(hWaveOut,@WavHdr[i],SizeOf(WavHdr[i]));
     GlobalUnlock(ghMem[i]);
     GlobalFree(ghMem[i]);
   end;
+{$ENDIF}
   //waveOutClose(hWaveOut);
 
   CloseWaveFile(); // Close the Wav output file if one exists
@@ -1363,7 +1371,11 @@ end;
 
 function TSpecEmu.Interrupt(): Word;
 var
+{$IFDEF FPC}
+  iNow: QWord;
+{$ELSE}
   iSleep,iTimer,iPoorTimer: int64;
+{$ENDIF}
 begin
   Result := 0; // No interrupt
 
@@ -1391,6 +1403,19 @@ begin
   begin
     // Waveout
     OutputWave();
+{$IFDEF FPC}
+    // AudioWriteFrame blocks while its buffer is full, which keeps us at
+    // 50 Hz; without an audio device fall back to the system clock
+    if not AudioActive then
+    begin
+      iNow := GetTickCount64;
+      if iNextIntTime > iNow then
+        Sleep(iNextIntTime - iNow)
+      else
+        iNextIntTime := iNow;
+      Inc(iNextIntTime, 20);
+    end;
+{$ELSE}
     QueryPerformanceCounter(iTimer);
 
     iPoorTimer := timeGetTime();
@@ -1406,6 +1431,7 @@ begin
 
     QueryPerformanceCounter(iLast5IntTime);
     iLastIntTime := timeGetTime();
+{$ENDIF}
   end
   else
     OutputWaveFile();
@@ -2673,11 +2699,16 @@ begin
     waveout[i] := 128 + Round(k * FVolume/100);
   end;
 
+{$IFDEF FPC}
+  AudioWriteFrame(waveout, 882);
+  iWavePtr := 0;
+{$ELSE}
   CopyMemory(WavHdr[iBufNum].lpData, @waveout[0],882);
   waveOutWrite(hWaveOut, @WavHdr[iBufNum], SizeOf(WavHdr[iBufNum]));
   iWavePtr := 0;
   inc(iBufNum);
   if iBufNum > 10 then iBufNum := 0;
+{$ENDIF}
 end;
 
 procedure TSpecEmu.OutputWaveFile();
@@ -2714,6 +2745,13 @@ begin
 end;
 
 procedure TSpecEmu.InitializeWaveOut();
+{$IFDEF FPC}
+begin
+  // The audio device itself is opened once by the main window (AudioInit)
+  cBeeperVal := 128;
+  iNextIntTime := 0;
+end;
+{$ELSE}
 var
   iRet: integer;
   sErrMsg: string;
@@ -2757,6 +2795,7 @@ begin
     cWaveBuf[iRet] := cBeeperVal;
   iBufNum := 0;
 end;
+{$ENDIF}
 
 procedure TSpecEmu.SaveTop32K(sFileName: string);
 var
