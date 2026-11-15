@@ -2144,8 +2144,7 @@ object STMainWnd: TSTMainWnd
         'Phaser1, Digital Drums'
         'Phaser1, Synth Drums'
         'Savage'
-        'Plip Plop'
-        'Stocker')
+        'ROM Beep')
     end
   end
   object pnlSavageOrnEditor: TPanel
@@ -2506,11 +2505,13 @@ object STMainWnd: TSTMainWnd
           OnClick = mnuTGROMBeepClick
         end
         object mnuTGPlipPlop: TMenuItem
-          Caption = 'Plip Plop'
+          Caption = 'Plip Plop (not available)'
+          Enabled = False
           OnClick = mnuTGPlipPlopClick
         end
         object mnuTGStocker: TMenuItem
-          Caption = 'Stocker'
+          Caption = 'Stocker (not available)'
+          Enabled = False
           OnClick = mnuTGStockerClick
         end
       end

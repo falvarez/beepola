@@ -2159,6 +2159,7 @@ object STMainWnd: TSTMainWnd
         'Phaser1, Digital Drums'
         'Phaser1, Synth Drums'
         'Savage'
+        'ROM Beep'
         'Plip Plop'
         'Stocker')
     end

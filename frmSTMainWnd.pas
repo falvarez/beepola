@@ -293,6 +293,7 @@ type
     procedure TMBPatternTick;
     procedure UpdatePianoKeys(iCh1, iCh2: integer);
     procedure DrawSongLoopStart;
+    procedure SelectSongEngine;
     procedure PaintSongLoopStart;
     procedure NotePlayerNewPattern;
     function MousePosToNoteVal(X, Y: integer): integer;
@@ -651,35 +652,13 @@ begin
       sFileName := sFile;
       Self.Caption := ExtractBBSongFileName(sFileName) + ' - ' + Application.Title;
       udnPatternNum.Position := 0;
+      // Switch engine first: the pattern grid's columns depend on it
+      SelectSongEngine();
       UpdateSongGrid();
       UpdatePatternGrid();
       DrawSongLoopStart();
       UndoPattern := Song.Pattern[0];
       UndoSvgPattern := Song.SvgPatternData[0];
-      if Song.PreferredEngine = 'TMB' then
-      begin
-        mnuTGTheMusicBoxClick(nil);
-      end
-      else if Song.PreferredEngine = 'MSD' then
-      begin
-        mnuTGMusicStudioClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1D' then
-      begin
-        mnuTGPhaser1DigitalClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1S' then
-      begin
-        mnuTGPhaser1SynthClick(nil);
-      end
-      else if Song.PreferredEngine = 'SVG' then
-      begin
-        mnuTGSavageClick(nil);
-      end
-      else
-      begin
-        mnuTGSpecialFXClick(nil);
-      end;
 
       grdPattern.SetFocus();
       bSongDirty := false;
@@ -861,42 +840,8 @@ begin
       sFileName := ParamStr(1);
       Self.Caption := ExtractBBSongFileName(sFileName) + ' - ' + Application.Title;
       udnPatternNum.Position := 0;
-      if Song.PreferredEngine = 'TMB' then
-      begin
-        mnuTGTheMusicBoxClick(nil);
-      end
-      else if Song.PreferredEngine = 'MSD' then
-      begin
-        mnuTGMusicStudioClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1D' then
-      begin
-        mnuTGPhaser1DigitalClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1S' then
-      begin
-        mnuTGPhaser1SynthClick(nil);
-      end
-      else if Song.PreferredEngine = 'SVG' then
-      begin
-        mnuTGSavageClick(nil);
-      end
-      else if Song.PreferredEngine = 'RMB' then
-      begin
-        mnuTGROMBeepClick(nil);
-      end
-      else if Song.PreferredEngine = 'PLP' then
-      begin
-        mnuTGPlipPlopClick(nil);
-      end
-      else if Song.PreferredEngine = 'STK' then
-      begin
-        mnuTGStockerClick(nil);
-      end
-      else
-      begin
-        mnuTGSpecialFXClick(nil);
-      end;
+      // Switch engine first: the pattern grid's columns depend on it
+      SelectSongEngine();
     end;
   end;
 
@@ -1750,6 +1695,40 @@ begin
   grdPattern.Row := ((grdPattern.Row-1 + cboAutoInc.ItemIndex) mod udnPatternLen.Position)+1;
 end;
 
+// Switch to the beeper engine a newly loaded song was written for
+procedure TSTMainWnd.SelectSongEngine();
+begin
+  if Song.PreferredEngine = 'TMB' then
+    mnuTGTheMusicBoxClick(nil)
+  else if Song.PreferredEngine = 'MSD' then
+    mnuTGMusicStudioClick(nil)
+  else if Song.PreferredEngine = 'P1D' then
+    mnuTGPhaser1DigitalClick(nil)
+  else if Song.PreferredEngine = 'P1S' then
+    mnuTGPhaser1SynthClick(nil)
+  else if Song.PreferredEngine = 'SVG' then
+    mnuTGSavageClick(nil)
+  else if Song.PreferredEngine = 'RMB' then
+    mnuTGROMBeepClick(nil)
+{$IFDEF FPC}
+  else if (Song.PreferredEngine = 'PLP') or (Song.PreferredEngine = 'STK') then
+  begin
+    // Neither engine is implemented in this version (see docs/PLAN.md)
+    Application.MessageBox('This song uses a beeper engine that is not available in this version of Beepola. It will play with Special FX (Fuzz Click) instead.',
+                           PAnsiChar(Application.Title),
+                           MB_OK or MB_ICONINFORMATION);
+    mnuTGSpecialFXClick(nil);
+  end
+{$ELSE}
+  else if Song.PreferredEngine = 'PLP' then
+    mnuTGPlipPlopClick(nil)
+  else if Song.PreferredEngine = 'STK' then
+    mnuTGStockerClick(nil)
+{$ENDIF}
+  else
+    mnuTGSpecialFXClick(nil);
+end;
+
 procedure TSTMainWnd.DrawSongLoopStart();
 begin
 {$IFDEF FPC}
@@ -2450,34 +2429,12 @@ begin
       sFileName := dlgOpen.FileName;
       Self.Caption := ExtractBBSongFileName(sFileName) + ' - ' + Application.Title;
       udnPatternNum.Position := 0;
+      // Switch engine first: the pattern grid's columns depend on it
+      SelectSongEngine();
       UpdateSongGrid();
       UpdatePatternGrid();
       DrawSongLoopStart();
       UndoPattern := Song.Pattern[0];
-      if Song.PreferredEngine = 'TMB' then
-      begin
-        mnuTGTheMusicBoxClick(nil);
-      end
-      else if Song.PreferredEngine = 'MSD' then
-      begin
-        mnuTGMusicStudioClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1D' then
-      begin
-        mnuTGPhaser1DigitalClick(nil);
-      end
-      else if Song.PreferredEngine = 'P1S' then
-      begin
-        mnuTGPhaser1SynthClick(nil);
-      end
-      else if Song.PreferredEngine = 'SVG' then
-      begin
-        mnuTGSavageClick(nil);
-      end
-      else
-      begin
-        mnuTGSpecialFXClick(nil);
-      end;
 
       grdPattern.SetFocus();
       bSongDirty := false;
