@@ -293,6 +293,7 @@ type
     procedure TMBPatternTick;
     procedure UpdatePianoKeys(iCh1, iCh2: integer);
     procedure DrawSongLoopStart;
+    procedure PaintSongLoopStart;
     procedure NotePlayerNewPattern;
     function MousePosToNoteVal(X, Y: integer): integer;
     function GetPhaser1Instr(iRow: integer): byte;
@@ -1750,6 +1751,16 @@ begin
 end;
 
 procedure TSTMainWnd.DrawSongLoopStart();
+begin
+{$IFDEF FPC}
+  // Cocoa only shows what is drawn during OnPaint: ask for a repaint
+  pbxLoopStart.Invalidate;
+{$ELSE}
+  PaintSongLoopStart;
+{$ENDIF}
+end;
+
+procedure TSTMainWnd.PaintSongLoopStart();
 var
   r: TRect;
   tri: array[1..4] of TPoint;
@@ -2675,7 +2686,7 @@ end;
 
 procedure TSTMainWnd.pbxLoopStartPaint(Sender: TObject);
 begin
-  DrawSongLoopStart();
+  PaintSongLoopStart();
 end;
 
 procedure TSTMainWnd.pbxOrnLoopMouseDown(Sender: TObject; Button: TMouseButton;
